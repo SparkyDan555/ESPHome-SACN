@@ -3,12 +3,13 @@ import esphome.config_validation as cv
 from esphome.const import CONF_ID, CONF_PORT
 from esphome.core import CORE
 from esphome.components import light
+from esphome.components.light.effects import LightEffect
 
 DEPENDENCIES = ['network']
 CODEOWNERS = ['@your-github-username']
 
 e131_light_ns = cg.esphome_ns.namespace('e131_light')
-E131LightEffect = e131_light_ns.class_('E131LightEffect', light.LightEffect)
+E131LightEffect = e131_light_ns.class_('E131LightEffect', LightEffect)
 
 CONF_METHOD = 'method'
 CONF_UNIVERSE = 'universe'
