@@ -3,7 +3,7 @@ import esphome.config_validation as cv
 from esphome.const import CONF_ID, CONF_PORT
 from esphome.core import CORE
 from esphome.components import light
-from esphome.components.light.effects import LightEffect
+from esphome.components.light import LightEffect
 
 DEPENDENCIES = ['network']
 CODEOWNERS = ['@your-github-username']

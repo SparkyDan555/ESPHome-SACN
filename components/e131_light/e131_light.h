@@ -1,6 +1,6 @@
 #pragma once
 
-#include "esphome/components/light/light_effect.h"
+#include "esphome/components/light/light.h"
 #include "esphome/core/component.h"
 #include "esphome/core/helpers.h"
 #include "esphome/core/log.h"
