@@ -36,10 +36,11 @@ Add this to your YAML configuration:
 
 ```yaml
 external_components:
-  - source: 
+  - source:
       type: git
       url: https://github.com/SparkyDan555/ESPHome-SACN
       ref: main
+    components: [ e131_light ]
 ```
 
 ## Hardware Setup
