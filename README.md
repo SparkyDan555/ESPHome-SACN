@@ -38,7 +38,7 @@ Add this to your YAML configuration:
 external_components:
   - source: 
       type: git
-      url: https://github.com/yourusername/ESPHome-SACN
+      url: https://github.com/SparkyDan555/ESPHome-SACN
       ref: main
 ```
 
