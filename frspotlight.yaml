@@ -1,0 +1,115 @@
+#<<: !include ./common_configs/spotlight-common.yaml
+
+#<<: !include ./spotlight-common-dmx.yaml
+
+substitutions:
+  device_description: LB02-5W-GU10
+  devicename: frspotlight
+  friendly_name: Front Right Spotlight
+  api_key: "hAOC0T++rgGHYviRWfUCz3QgZqaZ9wkrvubEyr5tCyU="
+  area: Cinema
+
+esp8266:
+  board: esp8285
+
+esphome:
+  name: ${devicename}
+  comment: ${device_description}
+  friendly_name: ${friendly_name}
+  area: ${area}
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: ${friendly_name}
+    password: !secret AP_Password
+
+captive_portal:
+
+web_server:
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: ${api_key}
+
+ota:
+  platform: esphome
+  password: !secret OTA_Password
+
+external_components:
+  - source:
+      type: git
+      url: https://github.com/SparkyDan555/ESPHome-SACN
+      ref: main
+    components: [ e131_light ]
+
+output:
+  - platform: esp8266_pwm
+    pin: GPIO4
+    frequency: 240 Hz
+    id: red_output
+  - platform: esp8266_pwm
+    pin: GPIO12
+    frequency: 240 Hz
+    id: green_output
+  - platform: esp8266_pwm
+    pin: GPIO14
+    frequency: 240 Hz
+    id: blue_output
+  - platform: esp8266_pwm
+    pin: GPIO5
+    frequency: 240 Hz
+    id: cold_output
+  - platform: esp8266_pwm
+    pin: GPIO13
+    frequency: 240 Hz
+    id: warm_output
+
+wled:
+  
+e131_light:
+  method: multicast  # or unicast
+  port: 5568  # optional, defaults to 5568
+
+light:
+  - platform: rgbww
+    name: None
+    id: spotlight_proxy
+    internal: false
+    icon: mdi:light-recessed
+    default_transition_length: 400ms
+    gamma_correct: 2.8
+    restore_mode: RESTORE_DEFAULT_OFF
+    color_interlock: true
+    red: red_output
+    green: green_output
+    blue: blue_output
+    cold_white: cold_output
+    warm_white: warm_output
+    cold_white_color_temperature: 6000 Kelvin
+    warm_white_color_temperature: 3000 Kelvin
+    effects:
+      - strobe:
+          name: FIRE STROBE
+          colors:
+            - state: true
+              color_mode: RGB
+              brightness: 100%
+              red: 100%
+              green: 0%
+              blue: 0%
+              duration: 50ms
+            - state: false
+              color_mode: RGB
+              duration: 950ms
+
+      - e131_light:
+          universe: 1
+          channels: RGB

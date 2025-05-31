@@ -9,17 +9,18 @@
 namespace esphome {
 namespace e131_light {
 
-class E131LightEffect : public light::LightEffect {
+class E131LightEffect : public Component {
  public:
-  E131LightEffect(const std::string &name) : LightEffect(name) {}
+  E131LightEffect(const std::string &name) : Component(name) {}
 
   void set_method(uint8_t method) { this->method_ = method; }
   void set_port(uint16_t port) { this->port_ = port; }
   void set_universe(uint16_t universe) { this->universe_ = universe; }
   void set_start_address(uint16_t start_address) { this->start_address_ = start_address; }
   void set_channels(uint8_t channels) { this->channels_ = channels; }
+  void set_light(light::LightState *light) { this->light_ = light; }
 
-  void start() override {
+  void setup() override {
     this->udp_.begin(this->port_);
     if (this->method_ == 0) {  // multicast
       this->udp_.beginMulticast(IPAddress(239, 255, 0, 1), this->port_);
@@ -27,11 +28,7 @@ class E131LightEffect : public light::LightEffect {
     this->last_update_ = 0;
   }
 
-  void stop() override {
-    this->udp_.stop();
-  }
-
-  void apply() override {
+  void loop() override {
     if (this->udp_.parsePacket() == 0)
       return;
 

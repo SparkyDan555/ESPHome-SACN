@@ -9,7 +9,7 @@ DEPENDENCIES = ['network']
 CODEOWNERS = ['@your-github-username']
 
 e131_light_ns = cg.esphome_ns.namespace('e131_light')
-E131LightEffect = e131_light_ns.class_('E131LightEffect', light.LightEffect)
+E131LightEffect = e131_light_ns.class_('E131LightEffect', cg.Component)
 
 CONF_METHOD = 'method'
 CONF_UNIVERSE = 'universe'
@@ -38,10 +38,14 @@ CONFIG_SCHEMA = cv.Schema({
 
 async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
-    await light.register_light_effect(var, config)
+    await cg.register_component(var, config)
 
     cg.add(var.set_method(config[CONF_METHOD]))
     cg.add(var.set_port(config[CONF_PORT]))
     cg.add(var.set_universe(config[CONF_UNIVERSE]))
     cg.add(var.set_start_address(config[CONF_START_ADDRESS]))
-    cg.add(var.set_channels(config[CONF_CHANNELS])) 
+    cg.add(var.set_channels(config[CONF_CHANNELS]))
+    
+    # Get the light state
+    light_state = await cg.get_variable(config[light.CONF_LIGHT_ID])
+    cg.add(var.set_light(light_state)) 
