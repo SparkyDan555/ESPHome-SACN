@@ -25,7 +25,7 @@ e131_light:
   method: multicast  # or unicast
   port: 5568
 
-# Example 1: RGBW Strip
+# Example 1: RGBW Strip (Addressable)
 light:
   - platform: neopixelbus
     id: rgbw_strip
@@ -34,13 +34,13 @@ light:
     variant: WS2812
     pin: GPIO23
     effects:
-      - e131_light:
+      - e131_light_addressable:
           e131_light_id: e131_light_device
           universe: 1
           start_address: 1
           channels: RGBW
 
-# Example 2: RGB Strip
+# Example 2: RGB Strip (Addressable)
 light:
   - platform: neopixelbus
     id: rgb_strip
@@ -49,13 +49,13 @@ light:
     variant: WS2812
     pin: GPIO22
     effects:
-      - e131_light:
+      - e131_light_addressable:
           e131_light_id: e131_light_device
           universe: 2
           start_address: 1
           channels: RGB
 
-# Example 3: Single Channel Light
+# Example 3: Single Channel Light (Regular)
 light:
   - platform: monochromatic
     id: single_channel
@@ -73,7 +73,25 @@ output:
     id: gpio_output
     pin: GPIO21
 
-# Example 4: Multiple Universes on One Strip
+# Example 4: RGBWW Spotlight (Regular)
+light:
+  - platform: rgbww
+    id: rgbww_spotlight
+    red: red_output
+    green: green_output
+    blue: blue_output
+    cold_white: cold_output
+    warm_white: warm_output
+    cold_white_color_temperature: 6000 Kelvin
+    warm_white_color_temperature: 3000 Kelvin
+    effects:
+      - e131_light:
+          e131_light_id: e131_light_device
+          universe: 4
+          start_address: 1
+          channels: RGB
+
+# Example 5: Multiple Universes on One Strip (Addressable)
 light:
   - platform: neopixelbus
     id: multi_universe_strip
@@ -82,18 +100,18 @@ light:
     variant: WS2812
     pin: GPIO19
     effects:
-      - e131_light:
-          e131_light_id: e131_light_device
-          universe: 4
-          start_address: 1
-          channels: RGB
-      - e131_light:
+      - e131_light_addressable:
           e131_light_id: e131_light_device
           universe: 5
+          start_address: 1
+          channels: RGB
+      - e131_light_addressable:
+          e131_light_id: e131_light_device
+          universe: 6
           start_address: 151
           channels: RGB
 
-# Example 5: Unicast Configuration
+# Example 6: Unicast Configuration
 e131_light:
   id: e131_light_unicast
   method: unicast
@@ -107,8 +125,8 @@ light:
     variant: WS2812
     pin: GPIO18
     effects:
-      - e131_light:
+      - e131_light_addressable:
           e131_light_id: e131_light_unicast
-          universe: 6
+          universe: 7
           start_address: 1
           channels: RGB 

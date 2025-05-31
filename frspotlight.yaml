@@ -45,10 +45,8 @@ ota:
 
 external_components:
   - source:
-      type: git
-      url: https://github.com/SparkyDan555/ESPHome-SACN
-      ref: main
-    components: [ e131_light ]
+      type: local
+      path: components
 
 output:
   - platform: esp8266_pwm
@@ -74,6 +72,7 @@ output:
 
 # Global E1.31 component configuration
 e131_light:
+  id: e131_light_device
   method: multicast
   port: 5568
 
@@ -110,5 +109,6 @@ light:
               duration: 950ms
       - e131_light:
           name: E1.31 Control
+          e131_light_id: e131_light_device
           universe: 1
           channels: RGB
