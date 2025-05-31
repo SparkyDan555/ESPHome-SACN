@@ -15,6 +15,7 @@ CONF_METHOD = 'method'
 CONF_UNIVERSE = 'universe'
 CONF_START_ADDRESS = 'start_address'
 CONF_CHANNELS = 'channels'
+CONF_LIGHT_ID = 'light_id'
 
 METHODS = {
     'multicast': 0,
@@ -34,7 +35,8 @@ CONFIG_SCHEMA = cv.Schema({
     cv.Required(CONF_UNIVERSE): cv.int_range(min=1, max=512),
     cv.Optional(CONF_START_ADDRESS, default=1): cv.int_range(min=1, max=512),
     cv.Optional(CONF_CHANNELS, default='RGB'): cv.enum(CHANNEL_TYPES, upper=True),
-}).extend(light.LIGHT_EFFECT_SCHEMA)
+    cv.Required(CONF_LIGHT_ID): cv.use_id(light.LightState),
+})
 
 async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
@@ -47,5 +49,5 @@ async def to_code(config):
     cg.add(var.set_channels(config[CONF_CHANNELS]))
     
     # Get the light state
-    light_state = await cg.get_variable(config[light.CONF_LIGHT_ID])
+    light_state = await cg.get_variable(config[CONF_LIGHT_ID])
     cg.add(var.set_light(light_state)) 

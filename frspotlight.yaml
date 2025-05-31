@@ -72,12 +72,6 @@ output:
     frequency: 240 Hz
     id: warm_output
 
-wled:
-  
-e131_light:
-  method: multicast  # or unicast
-  port: 5568  # optional, defaults to 5568
-
 light:
   - platform: rgbww
     name: None
@@ -110,6 +104,10 @@ light:
               color_mode: RGB
               duration: 950ms
 
-      - e131_light:
-          universe: 1
-          channels: RGB
+e131_light:
+  id: e131_light_device
+  method: multicast
+  port: 5568
+  universe: 1
+  channels: RGB
+  light_id: spotlight_proxy
