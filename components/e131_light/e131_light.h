@@ -10,34 +10,53 @@
 namespace esphome {
 namespace e131_light {
 
+class E131Component : public Component {
+ public:
+  void set_method(uint8_t method) { this->method_ = method; }
+  void set_port(uint16_t port) { this->port_ = port; }
+
+  void setup() override {
+    this->udp_.begin(this->port_);
+    if (this->method_ == 0) {  // multicast
+      this->udp_.beginMulticast(IPAddress(239, 255, 0, 1), this->port_);
+    }
+  }
+
+  void loop() override {
+    // Global component doesn't need to do anything in loop
+  }
+
+  WiFiUDP udp_;
+  uint8_t method_{0};  // 0 = multicast, 1 = unicast
+  uint16_t port_{5568};
+};
+
 class E131LightEffect : public light::Effect {
  public:
   E131LightEffect(const std::string &name) : Effect(name) {}
 
-  void set_method(uint8_t method) { this->method_ = method; }
-  void set_port(uint16_t port) { this->port_ = port; }
   void set_universe(uint16_t universe) { this->universe_ = universe; }
   void set_start_address(uint16_t start_address) { this->start_address_ = start_address; }
   void set_channels(uint8_t channels) { this->channels_ = channels; }
 
   void start() override {
-    this->udp_.begin(this->port_);
-    if (this->method_ == 0) {  // multicast
-      this->udp_.beginMulticast(IPAddress(239, 255, 0, 1), this->port_);
-    }
     this->last_update_ = 0;
   }
 
   void stop() override {
-    this->udp_.stop();
+    // Nothing to do on stop
   }
 
   void apply() override {
-    if (this->udp_.parsePacket() == 0)
+    auto *e131 = static_cast<E131Component *>(App.get_component(0));  // Get the first E131 component
+    if (e131 == nullptr)
+      return;
+
+    if (e131->udp_.parsePacket() == 0)
       return;
 
     uint8_t buffer[512];
-    int len = this->udp_.read(buffer, sizeof(buffer));
+    int len = e131->udp_.read(buffer, sizeof(buffer));
     if (len < 126)  // Minimum E1.31 packet size
       return;
 
@@ -115,9 +134,6 @@ class E131LightEffect : public light::Effect {
     this->state_->start_transition();
   }
 
-  WiFiUDP udp_;
-  uint8_t method_{0};  // 0 = multicast, 1 = unicast
-  uint16_t port_{5568};
   uint16_t universe_{1};
   uint16_t start_address_{1};
   uint8_t channels_{3};  // 1 = MONO, 3 = RGB, 4 = RGBW

@@ -9,6 +9,7 @@ DEPENDENCIES = ['network']
 CODEOWNERS = ['@your-github-username']
 
 e131_light_ns = cg.esphome_ns.namespace('e131_light')
+E131Component = e131_light_ns.class_('E131Component', cg.Component)
 E131LightEffect = e131_light_ns.class_('E131LightEffect', Effect)
 
 CONF_METHOD = 'method'
@@ -27,20 +28,39 @@ CHANNEL_TYPES = {
     'RGBW': 4,
 }
 
-CONFIG_SCHEMA = cv.Schema({
+# Global component configuration
+E131_CONFIG_SCHEMA = cv.Schema({
     cv.Optional(CONF_METHOD, default='multicast'): cv.enum(METHODS, lower=True),
     cv.Optional(CONF_PORT, default=5568): cv.port,
+})
+
+# Effect configuration
+E131_EFFECT_SCHEMA = cv.Schema({
     cv.Required(CONF_UNIVERSE): cv.int_range(min=1, max=512),
     cv.Optional(CONF_START_ADDRESS, default=1): cv.int_range(min=1, max=512),
     cv.Optional(CONF_CHANNELS, default='RGB'): cv.enum(CHANNEL_TYPES, upper=True),
 }).extend(light.EFFECT_SCHEMA)
 
-async def to_code(config):
-    var = cg.new_Pvariable(config[CONF_ID])
-    await light.register_effect(var, config)
+CONFIG_SCHEMA = cv.All(
+    cv.ensure_list(cv.Schema({
+        cv.GenerateID(): cv.declare_id(E131Component),
+    }).extend(E131_CONFIG_SCHEMA)),
+    cv.Length(min=1, max=1),
+)
 
-    cg.add(var.set_method(config[CONF_METHOD]))
-    cg.add(var.set_port(config[CONF_PORT]))
+async def to_code(config):
+    var = cg.new_Pvariable(config[0][CONF_ID])
+    await cg.register_component(var, config[0])
+    
+    cg.add(var.set_method(config[0][CONF_METHOD]))
+    cg.add(var.set_port(config[0][CONF_PORT]))
+
+# Effect registration
+@light.register_effect('e131_light', E131LightEffect, E131_EFFECT_SCHEMA)
+async def e131_light_effect_to_code(config, effect_id):
+    var = cg.new_Pvariable(effect_id)
+    await light.register_effect(var, config)
+    
     cg.add(var.set_universe(config[CONF_UNIVERSE]))
     cg.add(var.set_start_address(config[CONF_START_ADDRESS]))
     cg.add(var.set_channels(config[CONF_CHANNELS])) 
