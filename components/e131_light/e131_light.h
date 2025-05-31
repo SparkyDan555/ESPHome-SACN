@@ -1,7 +1,6 @@
 #pragma once
 
-#include "esphome/components/light/light.h"
-#include "esphome/components/light/effects.h"
+#include "esphome/components/light/addressable_light_effect.h"
 #include "esphome/core/component.h"
 #include "esphome/core/helpers.h"
 #include "esphome/core/log.h"
@@ -26,18 +25,21 @@ class E131Component : public Component {
     // Global component doesn't need to do anything in loop
   }
 
+  float get_setup_priority() const override { return setup_priority::AFTER_WIFI; }
+
   WiFiUDP udp_;
   uint8_t method_{0};  // 0 = multicast, 1 = unicast
   uint16_t port_{5568};
 };
 
-class E131LightEffect : public light::Effect {
+class E131LightEffect : public light::AddressableLightEffect {
  public:
-  E131LightEffect(const std::string &name) : Effect(name) {}
+  E131LightEffect(const std::string &name) : AddressableLightEffect(name) {}
 
   void set_universe(uint16_t universe) { this->universe_ = universe; }
   void set_start_address(uint16_t start_address) { this->start_address_ = start_address; }
   void set_channels(uint8_t channels) { this->channels_ = channels; }
+  void set_e131(E131Component *e131) { this->e131_ = e131; }
 
   void start() override {
     this->last_update_ = 0;
@@ -47,16 +49,15 @@ class E131LightEffect : public light::Effect {
     // Nothing to do on stop
   }
 
-  void apply() override {
-    auto *e131 = static_cast<E131Component *>(App.get_component(0));  // Get the first E131 component
-    if (e131 == nullptr)
+  void apply(light::AddressableLight &it, const Color &current_color) override {
+    if (this->e131_ == nullptr)
       return;
 
-    if (e131->udp_.parsePacket() == 0)
+    if (this->e131_->udp_.parsePacket() == 0)
       return;
 
     uint8_t buffer[512];
-    int len = e131->udp_.read(buffer, sizeof(buffer));
+    int len = this->e131_->udp_.read(buffer, sizeof(buffer));
     if (len < 126)  // Minimum E1.31 packet size
       return;
 
@@ -82,17 +83,12 @@ class E131LightEffect : public light::Effect {
     uint16_t dmx_start = 126;  // Start of DMX data
     uint16_t dmx_end = dmx_start + dmx_length;
 
-    if (this->state_->is_addressable()) {
-      this->process_addressable_light(buffer + dmx_start, dmx_length);
-    } else {
-      this->process_single_light(buffer + dmx_start, dmx_length);
-    }
+    this->process_light(it, buffer + dmx_start, dmx_length);
   }
 
  protected:
-  void process_addressable_light(const uint8_t *data, uint16_t length) {
-    auto *addr_light = (light::AddressableLight *) this->state_;
-    uint16_t num_leds = addr_light->size();
+  void process_light(light::AddressableLight &it, const uint8_t *data, uint16_t length) {
+    uint16_t num_leds = it.size();
     uint16_t channels_per_led = this->channels_;
     uint16_t max_leds = length / channels_per_led;
 
@@ -120,24 +116,16 @@ class E131LightEffect : public light::Effect {
           color.set_b(data[base_addr]);
           break;
       }
-      addr_light[i] = color;
+      it[i] = color;
     }
-    addr_light->show();
-  }
-
-  void process_single_light(const uint8_t *data, uint16_t length) {
-    if (length < this->start_address_)
-      return;
-
-    uint8_t value = data[this->start_address_ - 1];
-    this->state_->current_values.set_brightness(value / 255.0f);
-    this->state_->start_transition();
+    it.show();
   }
 
   uint16_t universe_{1};
   uint16_t start_address_{1};
   uint8_t channels_{3};  // 1 = MONO, 3 = RGB, 4 = RGBW
   uint32_t last_update_{0};
+  E131Component *e131_{nullptr};
 };
 
 }  // namespace e131_light
