@@ -33,9 +33,10 @@ class E131Component : public Component {
   uint16_t port_{5568};
 };
 
-class E131LightEffect : public light::Effect {
+// Base class for common E1.31 functionality
+class E131BaseEffect : public light::LightEffect {
  public:
-  E131LightEffect(const std::string &name) : Effect(name) {}
+  E131BaseEffect(const std::string &name) : LightEffect(name) {}
 
   void set_universe(uint16_t universe) { this->universe_ = universe; }
   void set_start_address(uint16_t start_address) { this->start_address_ = start_address; }
@@ -50,6 +51,44 @@ class E131LightEffect : public light::Effect {
     // Nothing to do on stop
   }
 
+ protected:
+  bool process_packet(uint8_t *buffer, int len) {
+    if (len < 126)  // Minimum E1.31 packet size
+      return false;
+
+    // Check for E1.31 packet
+    if (buffer[0] != 0x00 || buffer[1] != 0x10 || buffer[2] != 0x00 || buffer[3] != 0x00)
+      return false;
+
+    // Check for DMX data
+    if (buffer[4] != 0x02 || buffer[5] != 0x00)
+      return false;
+
+    // Get universe
+    uint16_t packet_universe = (buffer[113] << 8) | buffer[114];
+    if (packet_universe != this->universe_)
+      return false;
+
+    // Get DMX data
+    uint16_t dmx_length = (buffer[123] << 8) | buffer[124];
+    if (dmx_length > 512)
+      return false;
+
+    return true;
+  }
+
+  uint16_t universe_{1};
+  uint16_t start_address_{1};
+  uint8_t channels_{3};  // 1 = MONO, 3 = RGB, 4 = RGBW
+  uint32_t last_update_{0};
+  E131Component *e131_{nullptr};
+};
+
+// Effect for regular lights
+class E131LightEffect : public E131BaseEffect {
+ public:
+  E131LightEffect(const std::string &name) : E131BaseEffect(name) {}
+
   void apply() override {
     if (this->e131_ == nullptr)
       return;
@@ -59,40 +98,69 @@ class E131LightEffect : public light::Effect {
 
     uint8_t buffer[512];
     int len = this->e131_->udp_.read(buffer, sizeof(buffer));
-    if (len < 126)  // Minimum E1.31 packet size
-      return;
-
-    // Check for E1.31 packet
-    if (buffer[0] != 0x00 || buffer[1] != 0x10 || buffer[2] != 0x00 || buffer[3] != 0x00)
-      return;
-
-    // Check for DMX data
-    if (buffer[4] != 0x02 || buffer[5] != 0x00)
-      return;
-
-    // Get universe
-    uint16_t packet_universe = (buffer[113] << 8) | buffer[114];
-    if (packet_universe != this->universe_)
-      return;
-
-    // Get DMX data
-    uint16_t dmx_length = (buffer[123] << 8) | buffer[124];
-    if (dmx_length > 512)
+    if (!this->process_packet(buffer, len))
       return;
 
     // Process DMX data
     uint16_t dmx_start = 126;  // Start of DMX data
-    uint16_t dmx_end = dmx_start + dmx_length;
-
-    if (this->state_->is_addressable()) {
-      this->process_addressable_light(buffer + dmx_start, dmx_length);
-    } else {
-      this->process_single_light(buffer + dmx_start, dmx_length);
-    }
+    uint16_t dmx_length = (buffer[123] << 8) | buffer[124];
+    this->process_light(buffer + dmx_start, dmx_length);
   }
 
  protected:
-  void process_addressable_light(const uint8_t *data, uint16_t length) {
+  void process_light(const uint8_t *data, uint16_t length) {
+    if (length < this->start_address_)
+      return;
+
+    uint16_t base_addr = this->start_address_ - 1;
+    if (base_addr + this->channels_ > length)
+      return;
+
+    switch (this->channels_) {
+      case 4:  // RGBW
+        this->state_->current_values.set_red(data[base_addr] / 255.0f);
+        this->state_->current_values.set_green(data[base_addr + 1] / 255.0f);
+        this->state_->current_values.set_blue(data[base_addr + 2] / 255.0f);
+        this->state_->current_values.set_white(data[base_addr + 3] / 255.0f);
+        break;
+      case 3:  // RGB
+        this->state_->current_values.set_red(data[base_addr] / 255.0f);
+        this->state_->current_values.set_green(data[base_addr + 1] / 255.0f);
+        this->state_->current_values.set_blue(data[base_addr + 2] / 255.0f);
+        break;
+      case 1:  // MONO
+        this->state_->current_values.set_brightness(data[base_addr] / 255.0f);
+        break;
+    }
+    this->state_->start_transition();
+  }
+};
+
+// Effect for addressable lights
+class E131AddressableLightEffect : public E131BaseEffect {
+ public:
+  E131AddressableLightEffect(const std::string &name) : E131BaseEffect(name) {}
+
+  void apply() override {
+    if (this->e131_ == nullptr)
+      return;
+
+    if (this->e131_->udp_.parsePacket() == 0)
+      return;
+
+    uint8_t buffer[512];
+    int len = this->e131_->udp_.read(buffer, sizeof(buffer));
+    if (!this->process_packet(buffer, len))
+      return;
+
+    // Process DMX data
+    uint16_t dmx_start = 126;  // Start of DMX data
+    uint16_t dmx_length = (buffer[123] << 8) | buffer[124];
+    this->process_light(buffer + dmx_start, dmx_length);
+  }
+
+ protected:
+  void process_light(const uint8_t *data, uint16_t length) {
     auto *addr_light = (light::AddressableLight *) this->state_;
     uint16_t num_leds = addr_light->size();
     uint16_t channels_per_led = this->channels_;
@@ -126,39 +194,6 @@ class E131LightEffect : public light::Effect {
     }
     addr_light->show();
   }
-
-  void process_single_light(const uint8_t *data, uint16_t length) {
-    if (length < this->start_address_)
-      return;
-
-    uint16_t base_addr = this->start_address_ - 1;
-    if (base_addr + this->channels_ > length)
-      return;
-
-    switch (this->channels_) {
-      case 4:  // RGBW
-        this->state_->current_values.set_red(data[base_addr] / 255.0f);
-        this->state_->current_values.set_green(data[base_addr + 1] / 255.0f);
-        this->state_->current_values.set_blue(data[base_addr + 2] / 255.0f);
-        this->state_->current_values.set_white(data[base_addr + 3] / 255.0f);
-        break;
-      case 3:  // RGB
-        this->state_->current_values.set_red(data[base_addr] / 255.0f);
-        this->state_->current_values.set_green(data[base_addr + 1] / 255.0f);
-        this->state_->current_values.set_blue(data[base_addr + 2] / 255.0f);
-        break;
-      case 1:  // MONO
-        this->state_->current_values.set_brightness(data[base_addr] / 255.0f);
-        break;
-    }
-    this->state_->start_transition();
-  }
-
-  uint16_t universe_{1};
-  uint16_t start_address_{1};
-  uint8_t channels_{3};  // 1 = MONO, 3 = RGB, 4 = RGBW
-  uint32_t last_update_{0};
-  E131Component *e131_{nullptr};
 };
 
 }  // namespace e131_light
