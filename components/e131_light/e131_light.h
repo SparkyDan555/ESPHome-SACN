@@ -1,6 +1,7 @@
 #pragma once
 
-#include "esphome/components/light/addressable_light_effect.h"
+#include "esphome/components/light/light.h"
+#include "esphome/components/light/effects.h"
 #include "esphome/core/component.h"
 #include "esphome/core/helpers.h"
 #include "esphome/core/log.h"
@@ -32,9 +33,9 @@ class E131Component : public Component {
   uint16_t port_{5568};
 };
 
-class E131LightEffect : public light::AddressableLightEffect {
+class E131LightEffect : public light::Effect {
  public:
-  E131LightEffect(const std::string &name) : AddressableLightEffect(name) {}
+  E131LightEffect(const std::string &name) : Effect(name) {}
 
   void set_universe(uint16_t universe) { this->universe_ = universe; }
   void set_start_address(uint16_t start_address) { this->start_address_ = start_address; }
@@ -49,7 +50,7 @@ class E131LightEffect : public light::AddressableLightEffect {
     // Nothing to do on stop
   }
 
-  void apply(light::AddressableLight &it, const Color &current_color) override {
+  void apply() override {
     if (this->e131_ == nullptr)
       return;
 
@@ -83,12 +84,17 @@ class E131LightEffect : public light::AddressableLightEffect {
     uint16_t dmx_start = 126;  // Start of DMX data
     uint16_t dmx_end = dmx_start + dmx_length;
 
-    this->process_light(it, buffer + dmx_start, dmx_length);
+    if (this->state_->is_addressable()) {
+      this->process_addressable_light(buffer + dmx_start, dmx_length);
+    } else {
+      this->process_single_light(buffer + dmx_start, dmx_length);
+    }
   }
 
  protected:
-  void process_light(light::AddressableLight &it, const uint8_t *data, uint16_t length) {
-    uint16_t num_leds = it.size();
+  void process_addressable_light(const uint8_t *data, uint16_t length) {
+    auto *addr_light = (light::AddressableLight *) this->state_;
+    uint16_t num_leds = addr_light->size();
     uint16_t channels_per_led = this->channels_;
     uint16_t max_leds = length / channels_per_led;
 
@@ -116,9 +122,36 @@ class E131LightEffect : public light::AddressableLightEffect {
           color.set_b(data[base_addr]);
           break;
       }
-      it[i] = color;
+      addr_light[i] = color;
     }
-    it.show();
+    addr_light->show();
+  }
+
+  void process_single_light(const uint8_t *data, uint16_t length) {
+    if (length < this->start_address_)
+      return;
+
+    uint16_t base_addr = this->start_address_ - 1;
+    if (base_addr + this->channels_ > length)
+      return;
+
+    switch (this->channels_) {
+      case 4:  // RGBW
+        this->state_->current_values.set_red(data[base_addr] / 255.0f);
+        this->state_->current_values.set_green(data[base_addr + 1] / 255.0f);
+        this->state_->current_values.set_blue(data[base_addr + 2] / 255.0f);
+        this->state_->current_values.set_white(data[base_addr + 3] / 255.0f);
+        break;
+      case 3:  // RGB
+        this->state_->current_values.set_red(data[base_addr] / 255.0f);
+        this->state_->current_values.set_green(data[base_addr + 1] / 255.0f);
+        this->state_->current_values.set_blue(data[base_addr + 2] / 255.0f);
+        break;
+      case 1:  // MONO
+        this->state_->current_values.set_brightness(data[base_addr] / 255.0f);
+        break;
+    }
+    this->state_->start_transition();
   }
 
   uint16_t universe_{1};

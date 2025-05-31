@@ -3,15 +3,14 @@ import esphome.config_validation as cv
 from esphome.const import CONF_ID, CONF_PORT
 from esphome.core import CORE
 from esphome.components import light
-from esphome.components.light.effects import register_addressable_effect
-from esphome.components.light.types import AddressableLightEffect
+from esphome.components.light.effects import Effect
 
 DEPENDENCIES = ['network']
 CODEOWNERS = ['@SparkyDan555']
 
 e131_light_ns = cg.esphome_ns.namespace('e131_light')
 E131Component = e131_light_ns.class_('E131Component', cg.Component)
-E131LightEffect = e131_light_ns.class_('E131LightEffect', AddressableLightEffect)
+E131LightEffect = e131_light_ns.class_('E131LightEffect', Effect)
 
 CONF_METHOD = 'method'
 CONF_UNIVERSE = 'universe'
@@ -50,17 +49,12 @@ async def to_code(config):
     cg.add(var.set_port(config[0][CONF_PORT]))
 
 # Effect registration
-@register_addressable_effect(
-    'e131_light',
-    E131LightEffect,
-    'E1.31 Light',
-    {
-        cv.GenerateID(CONF_E131_ID): cv.use_id(E131Component),
-        cv.Required(CONF_UNIVERSE): cv.int_range(min=1, max=512),
-        cv.Optional(CONF_START_ADDRESS, default=1): cv.int_range(min=1, max=512),
-        cv.Optional(CONF_CHANNELS, default='RGB'): cv.enum(CHANNEL_TYPES, upper=True),
-    },
-)
+@light.register_effect('e131_light', E131LightEffect, {
+    cv.GenerateID(CONF_E131_ID): cv.use_id(E131Component),
+    cv.Required(CONF_UNIVERSE): cv.int_range(min=1, max=512),
+    cv.Optional(CONF_START_ADDRESS, default=1): cv.int_range(min=1, max=512),
+    cv.Optional(CONF_CHANNELS, default='RGB'): cv.enum(CHANNEL_TYPES, upper=True),
+})
 async def e131_light_effect_to_code(config, effect_id):
     parent = await cg.get_variable(config[CONF_E131_ID])
     
