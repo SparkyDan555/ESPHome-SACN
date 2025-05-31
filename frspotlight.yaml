@@ -103,6 +103,12 @@ light:
             - state: false
               color_mode: RGB
               duration: 950ms
+      - e131_light:
+          name: E1.31 Control
+          method: multicast
+          port: 5568
+          universe: 1
+          channels: RGB
 
 e131_light:
   id: e131_light_device

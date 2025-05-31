@@ -1,6 +1,7 @@
 #pragma once
 
 #include "esphome/components/light/light.h"
+#include "esphome/components/light/effects.h"
 #include "esphome/core/component.h"
 #include "esphome/core/helpers.h"
 #include "esphome/core/log.h"
@@ -9,18 +10,17 @@
 namespace esphome {
 namespace e131_light {
 
-class E131LightEffect : public Component {
+class E131LightEffect : public light::Effect {
  public:
-  E131LightEffect(const std::string &name) : Component(name) {}
+  E131LightEffect(const std::string &name) : Effect(name) {}
 
   void set_method(uint8_t method) { this->method_ = method; }
   void set_port(uint16_t port) { this->port_ = port; }
   void set_universe(uint16_t universe) { this->universe_ = universe; }
   void set_start_address(uint16_t start_address) { this->start_address_ = start_address; }
   void set_channels(uint8_t channels) { this->channels_ = channels; }
-  void set_light(light::LightState *light) { this->light_ = light; }
 
-  void setup() override {
+  void start() override {
     this->udp_.begin(this->port_);
     if (this->method_ == 0) {  // multicast
       this->udp_.beginMulticast(IPAddress(239, 255, 0, 1), this->port_);
@@ -28,7 +28,11 @@ class E131LightEffect : public Component {
     this->last_update_ = 0;
   }
 
-  void loop() override {
+  void stop() override {
+    this->udp_.stop();
+  }
+
+  void apply() override {
     if (this->udp_.parsePacket() == 0)
       return;
 
@@ -59,7 +63,7 @@ class E131LightEffect : public Component {
     uint16_t dmx_start = 126;  // Start of DMX data
     uint16_t dmx_end = dmx_start + dmx_length;
 
-    if (this->light_->is_addressable()) {
+    if (this->state_->is_addressable()) {
       this->process_addressable_light(buffer + dmx_start, dmx_length);
     } else {
       this->process_single_light(buffer + dmx_start, dmx_length);
@@ -68,7 +72,7 @@ class E131LightEffect : public Component {
 
  protected:
   void process_addressable_light(const uint8_t *data, uint16_t length) {
-    auto *addr_light = (light::AddressableLight *) this->light_;
+    auto *addr_light = (light::AddressableLight *) this->state_;
     uint16_t num_leds = addr_light->size();
     uint16_t channels_per_led = this->channels_;
     uint16_t max_leds = length / channels_per_led;
@@ -107,8 +111,8 @@ class E131LightEffect : public Component {
       return;
 
     uint8_t value = data[this->start_address_ - 1];
-    this->light_->current_values.set_brightness(value / 255.0f);
-    this->light_->start_transition();
+    this->state_->current_values.set_brightness(value / 255.0f);
+    this->state_->start_transition();
   }
 
   WiFiUDP udp_;
