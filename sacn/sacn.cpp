@@ -19,7 +19,7 @@ const uint8_t SACNComponent::SACN_FRAMING_LAYER_IDENTIFIER[4] = {
 };
 
 const uint8_t SACNComponent::SACN_DMP_LAYER_IDENTIFIER[4] = {
-  0x02, 0x00, 0x00, 0x00
+  0x04, 0x00, 0x00, 0x00
 };
 
 SACNComponent::SACNComponent() : receiving_data_(false), last_packet_time_(0) {}
@@ -53,15 +53,33 @@ void SACNComponent::loop() {
       continue;
     }
 
-    ESP_LOGV(TAG, "Received sACN packet of size %d", packet_size);
+    // Debug packet structure
+    ESP_LOGV(TAG, "Packet structure analysis (size: %d):", packet_size);
+    ESP_LOGV(TAG, "  Root Layer:");
+    ESP_LOGV(TAG, "    Preamble Size: 0x%02X%02X", payload[0], payload[1]);
+    ESP_LOGV(TAG, "    Post-amble Size: 0x%02X%02X", payload[2], payload[3]);
+    ESP_LOGV(TAG, "    ACN Packet ID: %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X",
+             payload[4], payload[5], payload[6], payload[7], payload[8], payload[9],
+             payload[10], payload[11], payload[12], payload[13], payload[14], payload[15]);
+    
+    ESP_LOGV(TAG, "  Framing Layer:");
+    ESP_LOGV(TAG, "    Source Name: %.64s", &payload[44]);  // Source name is at offset 44
+    ESP_LOGV(TAG, "    Universe: %d", payload[0x7A] | (payload[0x7B] << 8));
+    ESP_LOGV(TAG, "    Priority: %d", payload[0x70]);  // Priority at offset 0x70
+    ESP_LOGV(TAG, "    Sequence Number: %d", payload[0x75]);  // Sequence number at offset 0x75
+    
+    ESP_LOGV(TAG, "  DMP Layer:");
+    ESP_LOGV(TAG, "    Vector: 0x%02X", payload[0x7C]);  // DMP Vector at offset 0x7C
+    ESP_LOGV(TAG, "    Start Code: 0x%02X", payload[0x7D]);  // Start code at offset 0x7D
+    ESP_LOGV(TAG, "    First DMX Values: %02X %02X %02X %02X",
+             payload[0x7E], payload[0x7F], payload[0x80], payload[0x81]);  // DMX data starts at 0x7E
 
     if (!this->validate_sacn_packet_(&payload[0], payload.size())) {
-      ESP_LOGV(TAG, "Invalid sACN packet received");
-      continue;
+      continue;  // Validation function now logs specific issues
     }
 
     if (!this->process_(&payload[0], payload.size())) {
-      ESP_LOGV(TAG, "Failed to process sACN packet");
+      ESP_LOGW(TAG, "Failed to process sACN packet");
       continue;
     }
   }
@@ -111,52 +129,41 @@ void SACNComponent::remove_effect(SACNLightEffectBase *light_effect) {
 }
 
 bool SACNComponent::validate_sacn_packet_(const uint8_t *payload, uint16_t size) {
-  // Minimum sACN packet size (Root Layer + Framing Layer + DMP Layer + 1 byte DMX data)
+  // Minimum sACN packet size (126 bytes for root layer + framing layer + DMP layer)
   static const uint16_t MIN_PACKET_SIZE = 126;
 
   if (size < MIN_PACKET_SIZE) {
-    ESP_LOGV(TAG, "Packet too small: %d bytes", size);
+    ESP_LOGD(TAG, "Packet too small: %d bytes (min: %d)", size, MIN_PACKET_SIZE);
     return false;
   }
 
-  // Check preamble size (0x0010)
+  // xLights sACN packets start with 0x00 0x10
   if (payload[0] != 0x00 || payload[1] != 0x10) {
-    ESP_LOGV(TAG, "Invalid preamble size: %02x%02x", payload[0], payload[1]);
-    return false;
-  }
-
-  // Check postamble size (0x0000)
-  if (payload[2] != 0x00 || payload[3] != 0x00) {
-    ESP_LOGV(TAG, "Invalid postamble size: %02x%02x", payload[2], payload[3]);
+    ESP_LOGD(TAG, "Invalid packet start: %02X %02X (expected: 00 10)", payload[0], payload[1]);
     return false;
   }
 
   // Validate ACN packet identifier
-  if (payload[4] != 0x41 || payload[5] != 0x53 || payload[6] != 0x43 || payload[7] != 0x2d ||
-      payload[8] != 0x45 || payload[9] != 0x31 || payload[10] != 0x2e || payload[11] != 0x31 ||
-      payload[12] != 0x37) {
-    ESP_LOGV(TAG, "Invalid ACN packet identifier");
+  if (memcmp(payload + 4, SACN_PACKET_IDENTIFIER, sizeof(SACN_PACKET_IDENTIFIER)) != 0) {
+    ESP_LOGD(TAG, "Invalid ACN packet identifier");
     return false;
   }
 
-  // Check root flags and length
-  uint16_t root_length = (payload[16] << 8) | payload[17];
-  if (root_length > size) {
-    ESP_LOGV(TAG, "Invalid root layer length: %d", root_length);
+  // Validate DMP vector - accept both 0x02 (standard) and 0x04 (xLights)
+  uint8_t dmp_vector = payload[0x7C];
+  if (dmp_vector != 0x02 && dmp_vector != 0x04) {
+    ESP_LOGD(TAG, "Invalid DMP vector: 0x%02X (expected: 0x02 or 0x04)", dmp_vector);
+    ESP_LOGV(TAG, "Packet bytes around DMP vector: %02X %02X %02X %02X %02X",
+             payload[0x7A], payload[0x7B], payload[0x7C], payload[0x7D], payload[0x7E]);
     return false;
   }
 
-  // Check framing flags and length
-  uint16_t framing_length = (payload[38] << 8) | payload[39];
-  if (framing_length > size - 38) {
-    ESP_LOGV(TAG, "Invalid framing layer length: %d", framing_length);
-    return false;
-  }
-
-  // Check DMP flags and length
-  uint16_t dmp_length = (payload[115] << 8) | payload[116];
-  if (dmp_length > size - 115) {
-    ESP_LOGV(TAG, "Invalid DMP layer length: %d", dmp_length);
+  // Validate DMX start code - accept both 0x00 (Null Start Code) and 0x04
+  uint8_t start_code = payload[0x7D];
+  if (start_code != 0x00 && start_code != 0x04) {
+    ESP_LOGW(TAG, "Invalid DMX start code: 0x%02X (expected: 0x00 or 0x04)", start_code);
+    ESP_LOGV(TAG, "Packet bytes around start code: %02X %02X %02X %02X %02X",
+             payload[0x7B], payload[0x7C], payload[0x7D], payload[0x7E], payload[0x7F]);
     return false;
   }
 
@@ -164,18 +171,18 @@ bool SACNComponent::validate_sacn_packet_(const uint8_t *payload, uint16_t size)
 }
 
 uint16_t SACNComponent::get_universe_(const uint8_t *payload) {
-  // Universe is at offset 113-114 in the framing layer
-  return (payload[113] << 8) | payload[114];
+  // Universe number is little-endian at offset 0x7A
+  return payload[0x7A] | (payload[0x7B] << 8);
 }
 
 uint16_t SACNComponent::get_start_address_(const uint8_t *payload) {
-  // Start code is at offset 126
-  return payload[126];
+  // Start code
+  return payload[0x9D];
 }
 
 uint16_t SACNComponent::get_property_value_count_(const uint8_t *payload) {
-  // Property value count is at offset 123-124
-  return ((payload[123] << 8) | payload[124]) - 1;  // Subtract 1 for start code
+  // Property value count is little-endian at offset 0x123
+  return payload[0x123] | (payload[0x124] << 8);
 }
 
 bool SACNComponent::process_(const uint8_t *payload, uint16_t size) {
@@ -183,24 +190,37 @@ bool SACNComponent::process_(const uint8_t *payload, uint16_t size) {
   uint16_t start_address = this->get_start_address_(payload);
   uint16_t property_value_count = this->get_property_value_count_(payload);
 
-  ESP_LOGV(TAG, "Processing sACN packet - Universe: %d, Start Address: %d, Values: %d",
+  ESP_LOGD(TAG, "Processing sACN packet - Universe: %d, Start Address: %d, Values: %d",
            universe, start_address, property_value_count);
 
-  // DMX start code must be 0x00 for dimming data
-  if (start_address != 0x00) {
-    ESP_LOGV(TAG, "Invalid start code: 0x%02X", start_address);
+  // Accept both 0x00 (Null Start Code) and 0x04 start codes
+  uint8_t start_code = payload[0x7D];
+  if (start_code != 0x00 && start_code != 0x04) {
+    ESP_LOGW(TAG, "Invalid start code: 0x%02X", start_code);
+    ESP_LOGV(TAG, "Packet bytes around start code: %02X %02X %02X %02X %02X",
+             payload[0x7B], payload[0x7C], payload[0x7D], payload[0x7E], payload[0x7F]);
     return false;
   }
 
-  // Process data for each effect
-  uint16_t data_offset = 127;  // Start of DMX data
+  // DMX data starts at offset 0x7E
+  uint16_t data_offset = 0x7E;
+  
+  // Debug log the first few bytes of DMX data
+  if (size >= data_offset + 3) {
+    ESP_LOGD(TAG, "DMX Data [1-3]: %02X %02X %02X", 
+             payload[data_offset],     // First channel
+             payload[data_offset + 1], // Second channel
+             payload[data_offset + 2]); // Third channel
+  }
+
   for (auto *light_effect : this->light_effects_) {
     if (data_offset >= size) {
       ESP_LOGW(TAG, "Packet data truncated");
       return false;
     }
 
-    uint16_t values_processed = light_effect->process_(payload, size, data_offset);
+    // Process the DMX data
+    uint16_t values_processed = light_effect->process_(payload + data_offset, size - data_offset, 0);
     if (values_processed == 0) {
       ESP_LOGW(TAG, "Failed to process light effect data");
       return false;
