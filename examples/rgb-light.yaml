@@ -1,0 +1,96 @@
+substitutions:
+  device_description: LB02-5W-GU10
+  devicename: frspotlight
+  friendly_name: Front Right Spotlight
+  api_key: "hAOC0T++rgGHYviRWfUCz3QgZqaZ9wkrvubEyr5tCyU="
+  area: Cinema
+
+esp8266:
+  board: esp8285
+
+esphome:
+  name: ${devicename}
+  comment: ${device_description}
+  friendly_name: ${friendly_name}
+  area: ${area}
+  project:
+    name: "esphome.sacn-rgb-light"
+    version: "1.0.0"
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: ${friendly_name}
+    password: !secret AP_Password
+
+captive_portal:
+
+web_server:
+
+# Enable logging
+logger:
+  level: DEBUG
+  logs:
+    sacn: DEBUG  # Enable debug logging for sACN component
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: ${api_key}
+
+ota:
+  platform: esphome
+  password: !secret OTA_Password
+
+external_components:
+  - source:
+      type: local
+      path: components
+
+# Enable sACN component
+sacn:
+
+# Define RGB outputs with optimized settings for ESP8266
+output:
+  - platform: esp8266_pwm
+    pin: GPIO4
+    frequency: 240Hz  # Optimal frequency for ESP8266
+    id: red_output
+    
+  - platform: esp8266_pwm
+    pin: GPIO12
+    frequency: 240Hz
+    id: green_output
+    
+  - platform: esp8266_pwm
+    pin: GPIO14
+    frequency: 240Hz
+    id: blue_output
+
+# Define the RGB light with enhanced configuration
+light:
+  - platform: rgb
+    name: "${friendly_name}"
+    id: main_light
+    
+    red: red_output
+    green: green_output
+    blue: blue_output
+    
+    # Light configuration
+    gamma_correct: 2.8
+    default_transition_length: 0s  # Fast transitions for DMX-like control
+    restore_mode: RESTORE_DEFAULT_ON
+    
+    effects:
+      # sACN Effect
+      - sacn:
+          universe: 1  # DMX universe (1-63999)
+          start_channel: 1  # DMX start channel (1-512)
+          channel_type: RGB  # MONO, RGB, or RGBW
+          transport_mode: unicast  # unicast or multicast
+          timeout: 2500ms  # Time to wait before reverting to HA control
+    

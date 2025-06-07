@@ -1,158 +1,172 @@
-# ESPHome E1.31 Light Component
+# ESPHome sACN (E1.31) Component
 
-A custom ESPHome component that provides E1.31 (sACN) lighting control for both addressable and single lights. It's designed to be a more reliable alternative to the built-in E1.31 component.
+This component adds support for the sACN (E1.31) protocol to ESPHome, allowing any ESPHome light entity to be controlled via sACN. It supports both addressable and non-addressable lights, with configurable universe, start channel, and channel types.
 
 ## Features
 
-* Support for both addressable and single lights
-* Multiple channel configurations:
-  - RGBW (4 channels)
-  - RGB (3 channels)
-  - Single channel (dimmer)
-* Configurable universe and start address
-* Multicast and unicast support
-* Compatible with popular E1.31 controllers (xLights, QLC+, etc.)
-* Efficient packet handling and processing
-* Smart channel mapping and validation
+- Support for both addressable and non-addressable lights
+- Multiple channel types: MONO (1 channel), RGB (3 channels), RGBW (4 channels)
+- Configurable universe (1-63999)
+- Configurable start channel (1-512)
+- Unicast and multicast transport modes
+- 2.5s timeout with fallback to Home Assistant state
+- Proper packet validation and error handling
 
 ## Installation
 
-### Method 1: Local Components
-
-1. Create a `custom_components` directory in your ESPHome configuration directory if it doesn't already exist.
-2. Copy the entire `e131_light` directory into the `custom_components` directory.
-3. Add the following to your YAML configuration:
-
-```yaml
-external_components:
-  - source: 
-      type: local
-      path: custom_components
-```
-
-### Method 2: Direct Git Reference
-
-Add this to your YAML configuration:
+1. Copy the `components/sacn` directory to your ESPHome `custom_components` directory
+2. Add the following to your ESPHome configuration:
 
 ```yaml
 external_components:
   - source:
-      type: git
-      url: https://github.com/SparkyDan555/ESPHome-SACN
-      ref: main
-    components: [ e131_light ]
+      type: local
+      path: components
+
+# Enable sACN component
+sacn:
 ```
 
-## Hardware Setup
+## Configuration
 
-The E1.31 component works over Ethernet or WiFi, so you'll need either:
-* An ESP32 with built-in Ethernet
-* An ESP8266/ESP32 with WiFi
-* An ESP8266/ESP32 with an Ethernet shield
+### Basic Configuration
 
-## YAML Configuration
+Here's a basic example for an RGB light:
 
 ```yaml
-# Configure the e131_light component
-e131_light:
-  id: e131_light_device
-  method: multicast  # or unicast
-  port: 5568  # optional, defaults to 5568
-
-# Configure lights
 light:
-  - platform: neopixelbus  # or any other light platform
-    id: my_light
-    num_leds: 100
+  - platform: rgb
+    name: "RGB Light"
+    red: red_output
+    green: green_output
+    blue: blue_output
+    
     effects:
-      - e131_light:
-          e131_light_id: e131_light_device
+      - sacn:
           universe: 1
-          start_address: 1  # optional, defaults to 1
-          channels: RGBW  # or RGB or MONO
+          start_channel: 1
+          channel_type: RGB
+          transport_mode: unicast
+          timeout: 2500ms
 ```
 
 ### Configuration Variables
 
-#### Component Configuration
-- **id** (Required): The ID of the E1.31 component
-- **method** (Optional): The E1.31 listening method. Can be either `multicast` or `unicast`. Defaults to `multicast`
-- **port** (Optional): The UDP port to listen on. Defaults to 5568
+#### Light Effect Options
 
-#### Effect Configuration
-- **e131_light_id** (Required): The ID of the E1.31 component to use
-- **universe** (Required): The E1.31 universe number (1-512)
-- **start_address** (Optional): The starting DMX address (1-512). Defaults to 1
-- **channels** (Optional): The channel configuration. Can be:
-  - `RGBW`: 4 channels per LED (RGB + White)
-  - `RGB`: 3 channels per LED
-  - `MONO`: 1 channel per LED (dimmer)
-  Defaults to `RGB`
+- **universe** (*Optional*, int): The DMX universe to listen on. Range: 1-63999. Default: `1`
+- **start_channel** (*Optional*, int): The starting DMX channel. Range: 1-512. Default: `1`
+- **channel_type** (*Optional*, string): The type of light channels. One of:
+  - `MONO`: Single channel (intensity)
+  - `RGB`: Three channels (red, green, blue)
+  - `RGBW`: Four channels (red, green, blue, white)
+  Default: `RGB`
+- **transport_mode** (*Optional*, string): The network transport mode. One of:
+  - `unicast`: Direct unicast communication
+  - `multicast`: Multicast communication
+  Default: `unicast`
+- **timeout** (*Optional*, time): Time to wait without sACN data before reverting to Home Assistant control. Default: `2500ms`
 
 ## Example Configurations
 
-### RGBW Strip
+### RGB Light
+
+```yaml
+output:
+  - platform: ledc
+    pin: GPIO4
+    id: red_output
+    frequency: 1000Hz
+    
+  - platform: ledc
+    pin: GPIO12
+    id: green_output
+    frequency: 1000Hz
+    
+  - platform: ledc
+    pin: GPIO14
+    id: blue_output
+    frequency: 1000Hz
+
+light:
+  - platform: rgb
+    name: "RGB Light"
+    id: main_light
+    
+    red: red_output
+    green: green_output
+    blue: blue_output
+    
+    effects:
+      - sacn:
+          universe: 1
+          start_channel: 1
+          channel_type: RGB
+          transport_mode: unicast
+          timeout: 2500ms
+```
+
+### Addressable LED Strip
+
 ```yaml
 light:
   - platform: neopixelbus
-    num_leds: 100
+    type: GRB
+    pin: GPIO2
+    num_leds: 60
+    name: "LED Strip"
+    
     effects:
-      - e131_light:
+      - addressable_sacn:
           universe: 1
-          channels: RGBW
+          start_channel: 1
+          channel_type: RGB
+          transport_mode: unicast
+          timeout: 2500ms
 ```
 
-### RGB Strip
+### RGBW Light
+
 ```yaml
 light:
-  - platform: neopixelbus
-    num_leds: 150
+  - platform: rgbw
+    name: "RGBW Light"
+    red: red_output
+    green: green_output
+    blue: blue_output
+    white: white_output
+    
     effects:
-      - e131_light:
+      - sacn:
           universe: 1
-          channels: RGB
+          start_channel: 1
+          channel_type: RGBW
+          transport_mode: unicast
+          timeout: 2500ms
 ```
 
-### Single Channel Light
-```yaml
-light:
-  - platform: monochromatic
-    effects:
-      - e131_light:
-          universe: 1
-          channels: MONO
-```
+## Compatibility
 
-## Protocol Information
-
-This component implements the E1.31 (sACN) protocol for DMX over Ethernet:
-
-* Uses UDP for packet transmission
-* Supports both multicast (239.255.x.x) and unicast addressing
-* Implements priority handling for multiple sources
-* Validates packet sequence numbers for reliability
-* Handles DMX channel data according to the E1.31 specification
-
-### Key Features
-
-* Efficient packet processing with minimal overhead
-* Smart channel mapping for different light types
-* Automatic validation of universe and channel ranges
-* Support for standard DMX channel configurations
+This component has been tested with:
+- ESP32 (all variants)
+- ESP8266
+- LibreTiny boards
 
 ## Troubleshooting
 
-* **No response from lights**: Check your network configuration and ensure multicast is enabled if using multicast mode
-* **Incorrect colors**: Verify the channel configuration matches your light setup
-* **Connection issues**: Ensure your network allows UDP traffic on port 5568
-* **Performance issues**: Consider using unicast mode if multicast is causing network congestion
+1. Enable debug logging to see detailed sACN packet information:
+```yaml
+logger:
+  level: DEBUG
+  logs:
+    sacn: DEBUG
+```
+
+2. Common issues:
+   - No data received: Check universe and network settings
+   - Wrong colors: Verify channel type matches your configuration
+   - Flickering: Check network stability and timeout settings
 
 ## License
 
-This component is licensed under the MIT License.
-
-## Acknowledgments
-
-* Based on the E1.31 (sACN) protocol specification
-* Developed for integration with the ESPHome ecosystem
-* Inspired by various open-source E1.31 implementations 
+This component is licensed under the MIT License. 
