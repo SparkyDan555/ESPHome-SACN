@@ -1,7 +1,3 @@
-#<<: !include ./common_configs/spotlight-common.yaml
-
-#<<: !include ./spotlight-common-dmx.yaml
-
 substitutions:
   device_description: LB02-5W-GU10
   devicename: frspotlight
@@ -17,6 +13,9 @@ esphome:
   comment: ${device_description}
   friendly_name: ${friendly_name}
   area: ${area}
+  project:
+    name: "esphome.sacn-rgb-light"
+    version: "1.0.0"
 
 wifi:
   ssid: !secret wifi_ssid
@@ -33,6 +32,9 @@ web_server:
 
 # Enable logging
 logger:
+  level: DEBUG
+  logs:
+    sacn: DEBUG  # Enable debug logging for sACN component
 
 # Enable Home Assistant API
 api:
@@ -48,67 +50,47 @@ external_components:
       type: local
       path: components
 
+# Enable sACN component
+sacn:
+
+# Define RGB outputs with optimized settings for ESP8266
 output:
   - platform: esp8266_pwm
     pin: GPIO4
-    frequency: 240 Hz
+    frequency: 240Hz  # Optimal frequency for ESP8266
     id: red_output
+    
   - platform: esp8266_pwm
     pin: GPIO12
-    frequency: 240 Hz
+    frequency: 240Hz
     id: green_output
+    
   - platform: esp8266_pwm
     pin: GPIO14
-    frequency: 240 Hz
+    frequency: 240Hz
     id: blue_output
-  - platform: esp8266_pwm
-    pin: GPIO5
-    frequency: 240 Hz
-    id: cold_output
-  - platform: esp8266_pwm
-    pin: GPIO13
-    frequency: 240 Hz
-    id: warm_output
 
-# Global E1.31 component configuration
-e131_light:
-  id: e131_light_device
-  method: multicast
-  port: 5568
-
+# Define the RGB light with enhanced configuration
 light:
-  - platform: rgbww
-    name: None
-    id: spotlight_proxy
-    internal: false
-    icon: mdi:light-recessed
-    default_transition_length: 400ms
-    gamma_correct: 2.8
-    restore_mode: RESTORE_DEFAULT_OFF
-    color_interlock: true
+  - platform: rgb
+    name: "${friendly_name}"
+    id: main_light
+    
     red: red_output
     green: green_output
     blue: blue_output
-    cold_white: cold_output
-    warm_white: warm_output
-    cold_white_color_temperature: 6000 Kelvin
-    warm_white_color_temperature: 3000 Kelvin
+    
+    # Light configuration
+    gamma_correct: 2.8
+    default_transition_length: 0s  # Fast transitions for DMX-like control
+    restore_mode: RESTORE_DEFAULT_ON
+    
     effects:
-      - strobe:
-          name: FIRE STROBE
-          colors:
-            - state: true
-              color_mode: RGB
-              brightness: 100%
-              red: 100%
-              green: 0%
-              blue: 0%
-              duration: 50ms
-            - state: false
-              color_mode: RGB
-              duration: 950ms
-      - e131_light:
-          name: E1.31 Control
-          e131_light_id: e131_light_device
-          universe: 1
-          channels: RGB
+      # sACN Effect
+      - sacn:
+          universe: 1  # DMX universe (1-63999)
+          start_channel: 1  # DMX start channel (1-512)
+          channel_type: RGB  # MONO, RGB, or RGBW
+          transport_mode: unicast  # unicast or multicast
+          timeout: 2500ms  # Time to wait before reverting to HA control
+    
