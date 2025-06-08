@@ -38,14 +38,8 @@ void SACNLightEffect::start() {
     call.perform();
   }
 
-  // Force light output to blank state
+  // Blank the light output - using same approach as timeout handler
   {
-    // First ensure we're in a known state
-    this->state_->current_values = light::LightColorValues();
-    this->state_->current_values.set_state(true);
-    this->state_->current_values.set_brightness(0.0f);
-    
-    // Then make the call to blank output
     auto call = this->state_->make_call();
     call.set_state(true);  // Keep light "on" but...
     call.set_color_mode(light::ColorMode::RGB);
@@ -59,10 +53,6 @@ void SACNLightEffect::start() {
     call.set_save(false);
     call.perform();
   }
-  
-  // Force an immediate update of the light state
-  this->state_->loop();
-  this->state_->remote_values.apply();  // Force immediate state update
 }
 
 void SACNLightEffect::stop() {
