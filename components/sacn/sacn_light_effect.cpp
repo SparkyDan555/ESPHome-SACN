@@ -62,7 +62,7 @@ void SACNLightEffect::start() {
   
   // Force an immediate update of the light state
   this->state_->loop();
-  this->state_->apply_effect(); // Force immediate state update
+  this->state_->remote_values.apply();  // Force immediate state update
 }
 
 void SACNLightEffect::stop() {
