@@ -118,64 +118,49 @@ uint16_t SACNLightEffect::process_(const uint8_t *payload, uint16_t size, uint16
 
   this->last_sacn_time_ms_ = millis();
 
-  // Process based on channel type and directly set output values
-  switch (this->channel_type_) {
-    case SACN_MONO: {
-      float value = (float)payload[used] / 255.0f;
-      auto call = this->state_->make_call();
-      call.set_state(true);
-      call.set_brightness(value);
-      call.set_transition_length(0);
-      call.set_publish(false);
-      call.perform();
-      ESP_LOGV(TAG, "Setting mono output to %f", value);
-      break;
-    }
-      
-    case SACN_RGB: {
-      float red = (float)payload[used] / 255.0f;
-      float green = (float)payload[used + 1] / 255.0f;
-      float blue = (float)payload[used + 2] / 255.0f;
-      
-      auto call = this->state_->make_call();
-      call.set_state(true);
-      call.set_color_mode(light::ColorMode::RGB);
-      call.set_red(red);
-      call.set_green(green);
-      call.set_blue(blue);
-      call.set_brightness(1.0f);  // Set full brightness to prevent scaling
-      call.set_transition_length(0);
-      call.set_publish(false);
-      call.perform();
-      
-      ESP_LOGV(TAG, "Setting RGB outputs to R=%f, G=%f, B=%f", red, green, blue);
-      break;
-    }
-      
-    case SACN_RGBW: {
-      float red = (float)payload[used] / 255.0f;
-      float green = (float)payload[used + 1] / 255.0f;
-      float blue = (float)payload[used + 2] / 255.0f;
-      float white = (float)payload[used + 3] / 255.0f;
-      
-      auto call = this->state_->make_call();
-      call.set_state(true);
-      call.set_color_mode(light::ColorMode::RGB_WHITE);
-      call.set_red(red);
-      call.set_green(green);
-      call.set_blue(blue);
-      call.set_white(white);
-      call.set_brightness(1.0f);  // Set full brightness to prevent scaling
-      call.set_transition_length(0);
-      call.set_publish(false);
-      call.perform();
-      
-      ESP_LOGV(TAG, "Setting RGBW outputs to R=%f, G=%f, B=%f, W=%f", red, green, blue, white);
-      break;
-    }
+  // Convert DMX values to float (0.0-1.0)
+  float red = (float)payload[used] / 255.0f;
+  float green = this->channel_type_ >= SACN_RGB ? (float)payload[used + 1] / 255.0f : 0.0f;
+  float blue = this->channel_type_ >= SACN_RGB ? (float)payload[used + 2] / 255.0f : 0.0f;
+  float white = this->channel_type_ == SACN_RGBW ? (float)payload[used + 3] / 255.0f : 0.0f;
+
+  // Create a new light state call
+  auto call = this->state_->turn_on();
+
+  // Set color mode in order of preference (most capable to least capable)
+  call.set_color_mode_if_supported(light::ColorMode::RGB_COLD_WARM_WHITE);
+  call.set_color_mode_if_supported(light::ColorMode::RGB_COLOR_TEMPERATURE);
+  call.set_color_mode_if_supported(light::ColorMode::RGB_WHITE);
+  call.set_color_mode_if_supported(light::ColorMode::RGB);
+
+  // Set RGB values directly without any scaling
+  call.set_red_if_supported(red);
+  call.set_green_if_supported(green);
+  call.set_blue_if_supported(blue);
+
+  // Set brightness to the maximum RGB value to prevent auto-scaling
+  call.set_brightness_if_supported(std::max(red, std::max(green, blue)));
+  call.set_color_brightness_if_supported(1.0f);
+
+  // For RGBW mode, set white channel
+  if (this->channel_type_ == SACN_RGBW) {
+    call.set_white_if_supported(white);
+  } else {
+    // Disable white channels for RGB/MONO modes
+    call.set_white_if_supported(0.0f);
+    call.set_cold_white_if_supported(0.0f);
+    call.set_warm_white_if_supported(0.0f);
   }
 
-  // Call loop to ensure immediate update
+  // Configure the light call to be as direct as possible
+  call.set_transition_length_if_supported(0);
+  call.set_publish(false);
+  call.set_save(false);
+
+  // Perform the light call
+  call.perform();
+
+  // Manually call loop to ensure immediate update
   this->state_->loop();
 
   return this->channel_type_;
