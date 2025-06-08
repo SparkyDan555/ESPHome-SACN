@@ -186,12 +186,21 @@ uint16_t SACNLightEffect::process_(const uint8_t *payload, uint16_t size, uint16
   call.set_blue_if_supported(blue);
 
   // Set brightness to the maximum RGB value to prevent auto-scaling
-  call.set_brightness_if_supported(std::max(red, std::max(green, blue)));
+  float max_brightness = std::max(red, std::max(green, blue));
+  if (this->channel_type_ == SACN_RGBW) {
+    max_brightness = std::max(max_brightness, white);
+  }
+  call.set_brightness_if_supported(max_brightness);
   call.set_color_brightness_if_supported(1.0f);
 
-  // For RGBW mode, set white channel
+  // For RGBW mode, set white channels
   if (this->channel_type_ == SACN_RGBW) {
+    // For RGBW mode on an RGBWW light, set both cold and warm white to the same value
+    call.set_cold_white_if_supported(white);
+    call.set_warm_white_if_supported(white);
+    // Also set the legacy white value for RGB_WHITE mode
     call.set_white_if_supported(white);
+    ESP_LOGV(TAG, "Setting white channels to %f", white);
   } else {
     // Disable white channels for RGB/MONO modes
     call.set_white_if_supported(0.0f);
