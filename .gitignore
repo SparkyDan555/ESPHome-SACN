@@ -46,3 +46,4 @@ Desktop.ini
 # DDP reference implementation
 ddp/ 
 examples/rgb-light.yaml
+spotlight-common-dmx.yaml

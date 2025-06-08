@@ -133,22 +133,25 @@ uint16_t SACNLightEffect::process_(const uint8_t *payload, uint16_t size, uint16
   // Create a new light state call
   auto call = this->state_->turn_on();
 
-  // Always set RGB_WHITE mode for RGBW lights to prevent cold/warm white behavior
+  // For RGBW mode, handle white channel specially
   if (this->channel_type_ == SACN_RGBW) {
-    // Force RGB_WHITE mode
-    call.set_color_mode(light::ColorMode::RGB_WHITE);
+    // Force RGB_COLD_WARM_WHITE mode for RGBWW lights
+    call.set_color_mode(light::ColorMode::RGB_COLD_WARM_WHITE);
     
     // Set RGB channels
     call.set_red(red);
     call.set_green(green);
     call.set_blue(blue);
     
-    // Only set white if it's being used, otherwise force it to 0
+    // Only set white channels if white is being used, otherwise force them to 0
     if (raw_white > 0) {
-      call.set_white(white);
-      ESP_LOGV(TAG, "Setting RGBW values: R=%f, G=%f, B=%f, W=%f", red, green, blue, white);
+      // Set both cold and warm white to the same value for balanced white output
+      call.set_cold_white(white);
+      call.set_warm_white(white);
+      ESP_LOGV(TAG, "Setting RGBWW values: R=%f, G=%f, B=%f, W=%f", red, green, blue, white);
     } else {
-      call.set_white(0.0f);
+      call.set_cold_white(0.0f);
+      call.set_warm_white(0.0f);
       ESP_LOGV(TAG, "Setting RGB values: R=%f, G=%f, B=%f (W=0)", red, green, blue);
     }
     
