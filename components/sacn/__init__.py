@@ -33,6 +33,11 @@ CONF_SACN_START_CHANNEL = "start_channel"
 CONF_SACN_CHANNEL_TYPE = "channel_type"
 CONF_SACN_TRANSPORT_MODE = "transport_mode"
 CONF_SACN_TIMEOUT = "timeout"
+CONF_SACN_BLANK_ON_START = "blank_on_start"
+
+CHANNEL_MONO = "MONO"
+CHANNEL_RGB = "RGB"
+CHANNEL_RGBW = "RGBW"
 
 CONFIG_SCHEMA = cv.All(
     cv.Schema(
@@ -55,9 +60,10 @@ async def to_code(config):
         cv.GenerateID(CONF_SACN_ID): cv.use_id(SACNComponent),
         cv.Optional(CONF_SACN_UNIVERSE, default=1): cv.int_range(min=1, max=63999),
         cv.Optional(CONF_SACN_START_CHANNEL, default=1): cv.int_range(min=1, max=512),
-        cv.Optional(CONF_SACN_CHANNEL_TYPE, default="RGB"): cv.one_of(*SACN_CHANNEL_TYPE, upper=True),
+        cv.Optional(CONF_SACN_CHANNEL_TYPE, default=CHANNEL_RGB): cv.one_of(CHANNEL_MONO, CHANNEL_RGB, CHANNEL_RGBW, upper=True),
         cv.Optional(CONF_SACN_TRANSPORT_MODE, default="UNICAST"): cv.one_of(*SACN_TRANSPORT_MODE, upper=True),
         cv.Optional(CONF_SACN_TIMEOUT, default="2500ms"): cv.positive_time_period_milliseconds,
+        cv.Optional(CONF_SACN_BLANK_ON_START, default=True): cv.boolean,
     },
 )
 @register_addressable_effect(
@@ -83,5 +89,6 @@ async def sacn_light_effect_to_code(config, effect_id):
     cg.add(var.set_channel_type(SACN_CHANNEL_TYPE[config[CONF_SACN_CHANNEL_TYPE]]))
     cg.add(var.set_transport_mode(SACN_TRANSPORT_MODE[config[CONF_SACN_TRANSPORT_MODE]]))
     cg.add(var.set_timeout(config[CONF_SACN_TIMEOUT]))
+    cg.add(var.set_blank_on_start(config[CONF_SACN_BLANK_ON_START]))
 
     return var 

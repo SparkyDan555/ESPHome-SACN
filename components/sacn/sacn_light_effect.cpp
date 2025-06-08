@@ -38,21 +38,9 @@ void SACNLightEffect::start() {
     call.perform();
   }
 
-  // Blank the light output - using same approach as timeout handler
-  {
-    auto call = this->state_->make_call();
-    call.set_state(true);  // Keep light "on" but...
-    call.set_color_mode(light::ColorMode::RGB);
-    call.set_red(0.0f);    // Set all channels
-    call.set_green(0.0f);  // to zero for
-    call.set_blue(0.0f);   // blank output
-    call.set_white(0.0f);
-    call.set_brightness(0.0f);
-    call.set_transition_length(0);
-    call.set_publish(false);  // Don't publish this state to HA
-    call.set_save(false);
-    call.perform();
-  }
+  // Reset flags
+  this->initial_blank_done_ = false;
+  this->timeout_logged_ = false;
 }
 
 void SACNLightEffect::stop() {
@@ -100,6 +88,25 @@ void SACNLightEffect::apply() {
   } else {
     // Reset timeout log flag when receiving packets
     this->timeout_logged_ = false;
+  }
+
+  // Handle initial blanking if enabled
+  if (this->blank_on_start_ && !this->initial_blank_done_) {
+    // Blank the light output
+    auto call = this->state_->make_call();
+    call.set_state(true);  // Keep light "on" but...
+    call.set_color_mode(light::ColorMode::RGB);
+    call.set_red(0.0f);    // Set all channels
+    call.set_green(0.0f);  // to zero for
+    call.set_blue(0.0f);   // blank output
+    call.set_white(0.0f);
+    call.set_brightness(0.0f);
+    call.set_transition_length(0);
+    call.set_publish(false);  // Don't publish this state to HA
+    call.set_save(false);
+    call.perform();
+    
+    this->initial_blank_done_ = true;
   }
 }
 
