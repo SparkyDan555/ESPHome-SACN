@@ -12,7 +12,7 @@ namespace sacn {
 
 class SACNLightEffect : public SACNLightEffectBase, public light::LightEffect {
  public:
-  SACNLightEffect(const std::string &name) : LightEffect(name) {}
+  SACNLightEffect(const std::string &name) : LightEffect(name), timeout_logged_(false) {}
 
   const std::string &get_name() override;
 
@@ -20,18 +20,16 @@ class SACNLightEffect : public SACNLightEffectBase, public light::LightEffect {
   void stop() override;
   void apply() override;
 
-  // Store the effect ID for later use
-  void set_effect_id(uint32_t effect_id) { this->effect_id_ = effect_id; }
-  uint32_t get_effect_id() const { return this->effect_id_; }
-
  protected:
   uint16_t process_(const uint8_t *payload, uint16_t size, uint16_t used) override;
   
   // Store the last received values for each channel
   float last_values_[4] = {0.0f, 0.0f, 0.0f, 0.0f};  // RGBW values
+  
+  // Store the last time we logged (for rate limiting logs)
+  uint32_t last_log_time_ms_{0};
 
-  // Store the effect ID assigned by the light state
-  uint32_t effect_id_{0};
+  bool timeout_logged_{false};  // Track if timeout has been logged
 };
 
 }  // namespace sacn
