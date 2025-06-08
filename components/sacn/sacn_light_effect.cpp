@@ -118,52 +118,57 @@ uint16_t SACNLightEffect::process_(const uint8_t *payload, uint16_t size, uint16
 
   this->last_sacn_time_ms_ = millis();
 
+  // Get raw DMX values
+  uint8_t raw_red = payload[used];
+  uint8_t raw_green = this->channel_type_ >= SACN_RGB ? payload[used + 1] : 0;
+  uint8_t raw_blue = this->channel_type_ >= SACN_RGB ? payload[used + 2] : 0;
+  uint8_t raw_white = this->channel_type_ == SACN_RGBW ? payload[used + 3] : 0;
+
   // Convert DMX values to float (0.0-1.0)
-  float red = (float)payload[used] / 255.0f;
-  float green = this->channel_type_ >= SACN_RGB ? (float)payload[used + 1] / 255.0f : 0.0f;
-  float blue = this->channel_type_ >= SACN_RGB ? (float)payload[used + 2] / 255.0f : 0.0f;
-  float white = this->channel_type_ == SACN_RGBW ? (float)payload[used + 3] / 255.0f : 0.0f;
+  float red = (float)raw_red / 255.0f;
+  float green = (float)raw_green / 255.0f;
+  float blue = (float)raw_blue / 255.0f;
+  float white = (float)raw_white / 255.0f;
 
   // Create a new light state call
   auto call = this->state_->turn_on();
 
-  // Handle different channel types
+  // For RGBW mode, handle white channel specially
   if (this->channel_type_ == SACN_RGBW) {
-    // For RGBW, we want direct control of all channels independently
-    call.set_color_mode_if_supported(light::ColorMode::RGB_WHITE);
-    call.set_red_if_supported(red);
-    call.set_green_if_supported(green);
-    call.set_blue_if_supported(blue);
-    call.set_white_if_supported(white);
+    // Check if we're only using the white channel
+    bool white_only = (raw_red == 0 && raw_green == 0 && raw_blue == 0 && raw_white > 0);
     
-    // Set brightness to 1.0 to prevent scaling of any channels
-    call.set_brightness_if_supported(1.0f);
-    call.set_color_brightness_if_supported(1.0f);
-    
-    ESP_LOGV(TAG, "Setting RGBW outputs directly: R=%f, G=%f, B=%f, W=%f", red, green, blue, white);
-  } else if (this->channel_type_ == SACN_RGB) {
-    // For RGB, use max value for brightness to maintain color ratios
-    call.set_color_mode_if_supported(light::ColorMode::RGB);
-    call.set_red_if_supported(red);
-    call.set_green_if_supported(green);
-    call.set_blue_if_supported(blue);
-    
-    // Set brightness to max RGB value for proper scaling
-    call.set_brightness_if_supported(std::max(red, std::max(green, blue)));
-    call.set_color_brightness_if_supported(1.0f);
-    
-    // Ensure white channels are off
-    call.set_white_if_supported(0.0f);
-    call.set_cold_white_if_supported(0.0f);
-    call.set_warm_white_if_supported(0.0f);
-    
-    ESP_LOGV(TAG, "Setting RGB outputs: R=%f, G=%f, B=%f", red, green, blue);
-  } else {  // SACN_MONO
-    // For mono, use the single channel directly for brightness
-    call.set_color_mode_if_supported(light::ColorMode::BRIGHTNESS);
-    call.set_brightness_if_supported(red);
-    
-    ESP_LOGV(TAG, "Setting mono output to %f", red);
+    if (white_only && this->state_->supports_color_mode(light::ColorMode::COLOR_TEMPERATURE)) {
+      // If only white is active, use color temperature mode
+      call.set_color_mode(light::ColorMode::COLOR_TEMPERATURE);
+      // Set to neutral white temperature (4500K) and use brightness for intensity
+      call.set_color_temperature(4500);
+      call.set_brightness(white);
+      ESP_LOGV(TAG, "Using color temperature mode with brightness %f", white);
+    } else {
+      // If RGB is also active, use RGB mode with white channels
+      call.set_color_mode(light::ColorMode::RGB_COLD_WARM_WHITE);
+      call.set_red(red);
+      call.set_green(green);
+      call.set_blue(blue);
+      
+      // Set both cold and warm white to the same value
+      call.set_cold_white(white);
+      call.set_warm_white(white);
+      
+      // Set brightness to the maximum of all channels
+      float max_brightness = std::max(std::max(red, green), std::max(blue, white));
+      call.set_brightness(max_brightness);
+      
+      ESP_LOGV(TAG, "Using RGB mode with white channels at %f", white);
+    }
+  } else {
+    // For RGB/MONO modes, use standard RGB mode
+    call.set_color_mode(light::ColorMode::RGB);
+    call.set_red(red);
+    call.set_green(green);
+    call.set_blue(blue);
+    call.set_brightness(std::max(red, std::max(green, blue)));
   }
 
   // Configure the light call to be as direct as possible
