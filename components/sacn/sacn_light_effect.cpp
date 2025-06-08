@@ -184,55 +184,35 @@ uint16_t SACNLightEffect::process_(const uint8_t *payload, uint16_t size, uint16
   }
 
   // Create a new light state call
-  auto call = this->state_->make_call();
-  call.set_state(true);
-  
-  // Set color mode and values based on channel type
-  switch (this->channel_type_) {
-    case SACN_MONO:
-      call.set_color_mode(light::ColorMode::BRIGHTNESS);
-      call.set_brightness(red);
-      ESP_LOGD(TAG, "[MONO-CALL] Setting brightness=%f", red);
-      break;
-      
-    case SACN_RGB:
-      call.set_color_mode(light::ColorMode::RGB);
-      call.set_red(red);
-      call.set_green(green);
-      call.set_blue(blue);
-      // Force brightness to 1.0 to prevent auto-scaling
-      call.set_brightness(1.0f);
-      // Disable color brightness to prevent auto-scaling
-      call.set_color_brightness(1.0f);
-      ESP_LOGD(TAG, "[RGB-CALL] Setting light values: R=%f, G=%f, B=%f (brightness=1.0, color_brightness=1.0)", 
-               red, green, blue);
-      
-      // Debug the current light state
-      ESP_LOGD(TAG, "[RGB-STATE] Current light state: on=%d, color_mode=%d", 
-               this->state_->current_values.is_on(), (int)this->state_->current_values.get_color_mode());
-      ESP_LOGD(TAG, "[RGB-STATE] Current RGB values: R=%f, G=%f, B=%f",
-               this->state_->current_values.get_red(),
-               this->state_->current_values.get_green(),
-               this->state_->current_values.get_blue());
-      break;
-      
-    case SACN_RGBW:
-      call.set_color_mode(light::ColorMode::RGB_WHITE);
-      call.set_red(red);
-      call.set_green(green);
-      call.set_blue(blue);
-      call.set_white(white);
-      // Force brightness to 1.0 to prevent auto-scaling
-      call.set_brightness(1.0f);
-      // Disable color brightness to prevent auto-scaling
-      call.set_color_brightness(1.0f);
-      ESP_LOGD(TAG, "[RGBW-CALL] Setting light values: R=%f, G=%f, B=%f, W=%f (brightness=1.0, color_brightness=1.0)", 
-               red, green, blue, white);
-      break;
+  auto call = this->state_->turn_on();
+
+  // Set color mode in order of preference (most capable to least capable)
+  call.set_color_mode_if_supported(light::ColorMode::RGB_COLD_WARM_WHITE);
+  call.set_color_mode_if_supported(light::ColorMode::RGB_COLOR_TEMPERATURE);
+  call.set_color_mode_if_supported(light::ColorMode::RGB_WHITE);
+  call.set_color_mode_if_supported(light::ColorMode::RGB);
+
+  // Set RGB values directly without any scaling
+  call.set_red_if_supported(red);
+  call.set_green_if_supported(green);
+  call.set_blue_if_supported(blue);
+
+  // Set brightness to the maximum RGB value to prevent auto-scaling
+  call.set_brightness_if_supported(std::max(red, std::max(green, blue)));
+  call.set_color_brightness_if_supported(1.0f);
+
+  // For RGBW mode, set white channel
+  if (this->channel_type_ == SACN_RGBW) {
+    call.set_white_if_supported(white);
+  } else {
+    // Disable white channels for RGB/MONO modes
+    call.set_white_if_supported(0.0f);
+    call.set_cold_white_if_supported(0.0f);
+    call.set_warm_white_if_supported(0.0f);
   }
 
-  // Configure the light call
-  call.set_transition_length(0);
+  // Configure the light call to be as direct as possible
+  call.set_transition_length_if_supported(0);
   call.set_publish(false);
   call.set_save(false);
 
@@ -240,15 +220,7 @@ uint16_t SACNLightEffect::process_(const uint8_t *payload, uint16_t size, uint16
   call.perform();
   ESP_LOGD(TAG, "[CALL] Light call performed");
 
-  // Debug the light state after the call
-  ESP_LOGD(TAG, "[FINAL-STATE] Light state after call: on=%d, color_mode=%d", 
-           this->state_->current_values.is_on(), (int)this->state_->current_values.get_color_mode());
-  ESP_LOGD(TAG, "[FINAL-STATE] Final RGB values: R=%f, G=%f, B=%f",
-           this->state_->current_values.get_red(),
-           this->state_->current_values.get_green(),
-           this->state_->current_values.get_blue());
-
-  // Manually call loop to ensure the light state is updated immediately
+  // Manually call loop to ensure immediate update
   this->state_->loop();
 
   return this->channel_type_;

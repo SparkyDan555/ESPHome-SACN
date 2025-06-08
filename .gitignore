@@ -41,4 +41,7 @@ Desktop.ini
 .fuse_hidden*
 .directory
 .Trash-*
-.nfs* 
+.nfs*
+
+# DDP reference implementation
+ddp/ 
