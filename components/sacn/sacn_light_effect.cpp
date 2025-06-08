@@ -137,30 +137,23 @@ uint16_t SACNLightEffect::process_(const uint8_t *payload, uint16_t size, uint16
       raw_red = payload[used];
       raw_green = payload[used + 1];
       raw_blue = payload[used + 2];
+
+      // Get the maximum value to determine the brightness scale
+      float max_raw = std::max({raw_red, raw_green, raw_blue});
       
-      // Check if this is likely sACNView data (all values very low but should be bright)
-      bool is_sacnview = false;
-      if (raw_red > 0 && raw_red <= 3 && raw_green == 0 && raw_blue == 0) {
-        is_sacnview = true;
-      } else if (raw_green > 0 && raw_green <= 3 && raw_red == 0 && raw_blue == 0) {
-        is_sacnview = true;
-      } else if (raw_blue > 0 && raw_blue <= 3 && raw_red == 0 && raw_green == 0) {
-        is_sacnview = true;
-      }
-      
-      if (is_sacnview) {
-        // For sACNView: Scale up the values but maintain relative proportions
-        float max_value = std::max({raw_red, raw_green, raw_blue});
-        if (max_value > 0) {
-          red = raw_red > 0 ? 1.0f : 0.0f;
-          green = raw_green > 0 ? 1.0f : 0.0f;
-          blue = raw_blue > 0 ? 1.0f : 0.0f;
-        }
+      if (max_raw > 0) {
+        // Convert to relative intensities (0.0-1.0)
+        red = raw_red / max_raw;
+        green = raw_green / max_raw;
+        blue = raw_blue / max_raw;
+        
+        // Scale the brightness by the maximum value
+        float brightness = max_raw / 255.0f;
+        red *= brightness;
+        green *= brightness;
+        blue *= brightness;
       } else {
-        // For xLights and other standard sACN sources: Use raw values directly
-        red = (float)raw_red / 255.0f;
-        green = (float)raw_green / 255.0f;
-        blue = (float)raw_blue / 255.0f;
+        red = green = blue = 0.0f;
       }
       
       this->last_values_[0] = red;
@@ -180,25 +173,24 @@ uint16_t SACNLightEffect::process_(const uint8_t *payload, uint16_t size, uint16
       raw_blue = payload[used + 2];
       raw_white = payload[used + 3];
       
-      // Apply the same sACNView detection and scaling for RGBW
-      bool is_sacnview = false;
-      if ((raw_red > 0 && raw_red <= 3) || 
-          (raw_green > 0 && raw_green <= 3) || 
-          (raw_blue > 0 && raw_blue <= 3) || 
-          (raw_white > 0 && raw_white <= 3)) {
-        is_sacnview = true;
-      }
+      // Get the maximum value to determine the brightness scale
+      float max_raw = std::max({raw_red, raw_green, raw_blue, raw_white});
       
-      if (is_sacnview) {
-        red = raw_red > 0 ? 1.0f : 0.0f;
-        green = raw_green > 0 ? 1.0f : 0.0f;
-        blue = raw_blue > 0 ? 1.0f : 0.0f;
-        white = raw_white > 0 ? 1.0f : 0.0f;
+      if (max_raw > 0) {
+        // Convert to relative intensities (0.0-1.0)
+        red = raw_red / max_raw;
+        green = raw_green / max_raw;
+        blue = raw_blue / max_raw;
+        white = raw_white / max_raw;
+        
+        // Scale the brightness by the maximum value
+        float brightness = max_raw / 255.0f;
+        red *= brightness;
+        green *= brightness;
+        blue *= brightness;
+        white *= brightness;
       } else {
-        red = (float)raw_red / 255.0f;
-        green = (float)raw_green / 255.0f;
-        blue = (float)raw_blue / 255.0f;
-        white = (float)raw_white / 255.0f;
+        red = green = blue = white = 0.0f;
       }
       
       this->last_values_[0] = red;
@@ -231,7 +223,7 @@ uint16_t SACNLightEffect::process_(const uint8_t *payload, uint16_t size, uint16
       call.set_red(red);
       call.set_green(green);
       call.set_blue(blue);
-      call.set_brightness(1.0f);  // Full brightness, let RGB values control intensity
+      // Don't set brightness - let the RGB values control both color and intensity
       break;
       
     case SACN_RGBW:
@@ -241,7 +233,7 @@ uint16_t SACNLightEffect::process_(const uint8_t *payload, uint16_t size, uint16
       call.set_green(green);
       call.set_blue(blue);
       call.set_white(white);
-      call.set_brightness(1.0f);  // Full brightness, let RGBW values control intensity
+      // Don't set brightness - let the RGBW values control both color and intensity
       break;
   }
 
