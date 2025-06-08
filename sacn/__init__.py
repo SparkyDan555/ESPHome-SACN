@@ -77,10 +77,6 @@ async def sacn_light_effect_to_code(config, effect_id):
     parent = await cg.get_variable(config[CONF_SACN_ID])
     var = cg.new_Pvariable(effect_id, config[CONF_NAME])
 
-    # Get the effect index from the light state
-    effect_index = cg.RawExpression(f"light_state->get_effect_index({effect_id.id})")
-    cg.add(var.set_effect_id(effect_index))
-
     cg.add(var.set_sacn(parent))
     cg.add(var.set_universe(config[CONF_SACN_UNIVERSE]))
     cg.add(var.set_start_channel(config[CONF_SACN_START_CHANNEL]))

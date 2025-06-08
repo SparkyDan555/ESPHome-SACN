@@ -20,7 +20,6 @@ void SACNLightEffect::start() {
   }
   
   // Set initial state in Home Assistant - show as white at full brightness
-  // But keep the actual light output blank until we receive sACN data
   {
     auto call = this->state_->make_call();
     call.set_state(true);  // Show as on in HA
@@ -35,10 +34,10 @@ void SACNLightEffect::start() {
     call.perform();
   }
 
-  // Now set the actual light output to off/black
+  // Immediately blank the actual light output
   {
     auto call = this->state_->make_call();
-    call.set_state(true);  // Keep "on" but...
+    call.set_state(true);  // Keep light "on" but...
     call.set_color_mode(light::ColorMode::RGB);
     call.set_red(0.0f);    // Set all channels
     call.set_green(0.0f);  // to zero for
@@ -76,12 +75,26 @@ void SACNLightEffect::stop() {
 }
 
 void SACNLightEffect::apply() {
-  // If receiving sACN packets times out, just log it
+  // If receiving sACN packets times out, blank the output
   if (this->timeout_check()) {
     // Only log timeout once when stream stops
     if (!this->timeout_logged_) {
       ESP_LOGD(TAG, "sACN stream for '%s->%s' timed out.", this->state_->get_name().c_str(), this->get_name().c_str());
       this->timeout_logged_ = true;
+      
+      // Blank the light output
+      auto call = this->state_->make_call();
+      call.set_state(true);  // Keep light "on" but...
+      call.set_color_mode(light::ColorMode::RGB);
+      call.set_red(0.0f);    // Set all channels
+      call.set_green(0.0f);  // to zero for
+      call.set_blue(0.0f);   // blank output
+      call.set_white(0.0f);
+      call.set_brightness(0.0f);
+      call.set_transition_length(0);
+      call.set_publish(false);  // Don't publish this state to HA
+      call.set_save(false);
+      call.perform();
     }
   } else {
     // Reset timeout log flag when receiving packets

@@ -39,6 +39,12 @@ class SACNLightEffectBase {
   void set_channel_type(SACNChannelType channel_type) { this->channel_type_ = channel_type; }
   void set_transport_mode(SACNTransportMode transport_mode) { this->transport_mode_ = transport_mode; }
 
+  // Getters for configuration
+  uint16_t get_universe() const { return this->universe_; }
+  uint16_t get_start_channel() const { return this->start_channel_; }
+  SACNChannelType get_channel_type() const { return this->channel_type_; }
+  SACNTransportMode get_transport_mode() const { return this->transport_mode_; }
+
  protected:
   SACNComponent *sacn_{nullptr};
 

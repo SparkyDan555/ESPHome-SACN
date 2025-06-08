@@ -18,6 +18,17 @@ void SACNAddressableLightEffect::start() {
   this->last_colors_.resize(it->size(), Color::BLACK);
   this->data_received_ = false;
   
+  // Set initial state in Home Assistant - show as white at full brightness
+  auto call = this->state_->make_call();
+  call.set_color_mode_if_supported(light::ColorMode::RGB);
+  call.set_red(1.0f);
+  call.set_green(1.0f);
+  call.set_blue(1.0f);
+  call.set_brightness(1.0f);
+  call.set_publish(true);  // Publish initial state
+  call.set_save(false);
+  call.perform();
+  
   AddressableLightEffect::start();
   SACNLightEffectBase::start();
   
@@ -47,7 +58,7 @@ void SACNAddressableLightEffect::apply(light::AddressableLight &it, const Color 
     call.set_brightness_if_supported(this->state_->remote_values.get_brightness());
     call.set_color_brightness_if_supported(this->state_->remote_values.get_color_brightness());
     
-    call.set_publish(false);
+    call.set_publish(true);  // Publish state change when effect ends
     call.set_save(false);
     
     // Effect no longer active

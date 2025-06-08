@@ -231,7 +231,7 @@ bool SACNComponent::process_(const uint8_t *payload, uint16_t size) {
   uint16_t start_address = this->get_start_address_(payload);
   uint16_t property_value_count = this->get_property_value_count_(payload);
 
-  ESP_LOGD(TAG, "Processing sACN packet - Universe: %d, Start Address: %d, Values: %d",
+  ESP_LOGV(TAG, "Processing sACN packet - Universe: %d, Start Address: %d, Values: %d",
            universe, start_address, property_value_count);
 
   // DMX data starts at offset 126 (0x7E)
@@ -259,7 +259,7 @@ bool SACNComponent::process_(const uint8_t *payload, uint16_t size) {
   }
 
   // Debug log the first few bytes of DMX data
-  ESP_LOGD(TAG, "DMX Data [1-3]: %02X %02X %02X", 
+  ESP_LOGV(TAG, "DMX Data [1-3]: %02X %02X %02X", 
            payload[DMX_START_OFFSET],     // First channel
            payload[DMX_START_OFFSET + 1], // Second channel
            payload[DMX_START_OFFSET + 2]); // Third channel
