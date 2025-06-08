@@ -58,7 +58,7 @@ sacn:
 # Enable DDP component
 ddp:
 
-output:
+output: 
   - platform: esp8266_pwm
     pin: GPIO4
     frequency: 240 Hz
