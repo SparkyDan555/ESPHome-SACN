@@ -127,7 +127,7 @@ uint16_t SACNLightEffect::process_(const uint8_t *payload, uint16_t size, uint16
       raw_red = payload[used];
       red = green = blue = (float)raw_red / 255.0f;
       this->last_values_[0] = red;
-      ESP_LOGD(TAG, "[MONO] Raw=%d, Scaled=%f", raw_red, red);
+      ESP_LOGV(TAG, "Mono value: %d", raw_red);
       break;
     }
       
@@ -136,21 +136,16 @@ uint16_t SACNLightEffect::process_(const uint8_t *payload, uint16_t size, uint16
       raw_green = payload[used + 1];
       raw_blue = payload[used + 2];
       
-      ESP_LOGD(TAG, "[RGB-RAW] Input values: R=%d, G=%d, B=%d", raw_red, raw_green, raw_blue);
-      
       // Simple linear scaling from 0-255 to 0.0-1.0
       red = (float)raw_red / 255.0f;
       green = (float)raw_green / 255.0f;
       blue = (float)raw_blue / 255.0f;
       
-      ESP_LOGD(TAG, "[RGB-SCALED] After 0-255 to 0.0-1.0 scaling: R=%f, G=%f, B=%f", red, green, blue);
-      
       this->last_values_[0] = red;
       this->last_values_[1] = green;
       this->last_values_[2] = blue;
       
-      ESP_LOGD(TAG, "[RGB-STORED] Values stored in last_values_: R=%f, G=%f, B=%f", 
-               this->last_values_[0], this->last_values_[1], this->last_values_[2]);
+      ESP_LOGV(TAG, "RGB values: R=%d, G=%d, B=%d", raw_red, raw_green, raw_blue);
       break;
     }
       
@@ -160,25 +155,18 @@ uint16_t SACNLightEffect::process_(const uint8_t *payload, uint16_t size, uint16
       raw_blue = payload[used + 2];
       raw_white = payload[used + 3];
       
-      ESP_LOGD(TAG, "[RGBW-RAW] Input values: R=%d, G=%d, B=%d, W=%d", 
-               raw_red, raw_green, raw_blue, raw_white);
-      
       // Simple linear scaling from 0-255 to 0.0-1.0
       red = (float)raw_red / 255.0f;
       green = (float)raw_green / 255.0f;
       blue = (float)raw_blue / 255.0f;
       white = (float)raw_white / 255.0f;
       
-      ESP_LOGD(TAG, "[RGBW-SCALED] After 0-255 to 0.0-1.0 scaling: R=%f, G=%f, B=%f, W=%f", 
-               red, green, blue, white);
-      
       this->last_values_[0] = red;
       this->last_values_[1] = green;
       this->last_values_[2] = blue;
       this->last_values_[3] = white;
       
-      ESP_LOGD(TAG, "[RGBW-STORED] Values stored in last_values_: R=%f, G=%f, B=%f, W=%f", 
-               this->last_values_[0], this->last_values_[1], this->last_values_[2], this->last_values_[3]);
+      ESP_LOGV(TAG, "RGBW values: R=%d, G=%d, B=%d, W=%d", raw_red, raw_green, raw_blue, raw_white);
       break;
     }
   }
@@ -218,7 +206,6 @@ uint16_t SACNLightEffect::process_(const uint8_t *payload, uint16_t size, uint16
 
   // Apply the state change
   call.perform();
-  ESP_LOGD(TAG, "[CALL] Light call performed");
 
   // Manually call loop to ensure immediate update
   this->state_->loop();
