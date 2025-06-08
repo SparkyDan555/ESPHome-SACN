@@ -174,50 +174,42 @@ uint16_t SACNLightEffect::process_(const uint8_t *payload, uint16_t size, uint16
   // Create a new light state call
   auto call = this->state_->turn_on();
 
-  // For RGBW mode, try to force RGB_COLD_WARM_WHITE mode first
+  // For RGBW mode, handle white channel specially
   if (this->channel_type_ == SACN_RGBW) {
-    // Try to set the most capable mode first
-    if (this->state_->supports_color_mode(light::ColorMode::RGB_COLD_WARM_WHITE)) {
+    // Check if we're only using the white channel
+    bool white_only = (raw_red == 0 && raw_green == 0 && raw_blue == 0 && raw_white > 0);
+    
+    if (white_only && this->state_->supports_color_mode(light::ColorMode::COLOR_TEMPERATURE)) {
+      // If only white is active, use color temperature mode
+      call.set_color_mode(light::ColorMode::COLOR_TEMPERATURE);
+      // Set to neutral white temperature (4500K) and use brightness for intensity
+      call.set_color_temperature(4500);
+      call.set_brightness(white);
+      ESP_LOGV(TAG, "Using color temperature mode with brightness %f", white);
+    } else {
+      // If RGB is also active, use RGB mode with white channels
       call.set_color_mode(light::ColorMode::RGB_COLD_WARM_WHITE);
-      ESP_LOGV(TAG, "Using RGB_COLD_WARM_WHITE mode");
-    } else if (this->state_->supports_color_mode(light::ColorMode::RGB_WHITE)) {
-      call.set_color_mode(light::ColorMode::RGB_WHITE);
-      ESP_LOGV(TAG, "Using RGB_WHITE mode");
-    }
-  } else {
-    // For RGB/MONO, set color mode in order of preference
-    call.set_color_mode_if_supported(light::ColorMode::RGB);
-  }
-
-  // Set RGB values directly without any scaling
-  call.set_red_if_supported(red);
-  call.set_green_if_supported(green);
-  call.set_blue_if_supported(blue);
-
-  // Set brightness to the maximum RGB or white value to prevent auto-scaling
-  float max_brightness = std::max(red, std::max(green, blue));
-  if (this->channel_type_ == SACN_RGBW) {
-    max_brightness = std::max(max_brightness, white);
-  }
-  call.set_brightness_if_supported(max_brightness);
-
-  // For RGBW mode, set white channels
-  if (this->channel_type_ == SACN_RGBW) {
-    // For RGBWW lights, set both cold and warm white to the same value
-    if (this->state_->supports_color_mode(light::ColorMode::RGB_COLD_WARM_WHITE)) {
+      call.set_red(red);
+      call.set_green(green);
+      call.set_blue(blue);
+      
+      // Set both cold and warm white to the same value
       call.set_cold_white(white);
       call.set_warm_white(white);
-      ESP_LOGV(TAG, "Setting cold/warm white channels to %f", white);
-    } else {
-      // For regular RGBW lights, set the single white channel
-      call.set_white_if_supported(white);
-      ESP_LOGV(TAG, "Setting white channel to %f", white);
+      
+      // Set brightness to the maximum of all channels
+      float max_brightness = std::max(std::max(red, green), std::max(blue, white));
+      call.set_brightness(max_brightness);
+      
+      ESP_LOGV(TAG, "Using RGB mode with white channels at %f", white);
     }
   } else {
-    // Disable white channels for RGB/MONO modes
-    call.set_white_if_supported(0.0f);
-    call.set_cold_white_if_supported(0.0f);
-    call.set_warm_white_if_supported(0.0f);
+    // For RGB/MONO modes, use standard RGB mode
+    call.set_color_mode(light::ColorMode::RGB);
+    call.set_red(red);
+    call.set_green(green);
+    call.set_blue(blue);
+    call.set_brightness(std::max(red, std::max(green, blue)));
   }
 
   // Configure the light call to be as direct as possible
