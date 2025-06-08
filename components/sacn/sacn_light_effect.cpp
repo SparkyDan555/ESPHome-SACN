@@ -127,9 +127,7 @@ uint16_t SACNLightEffect::process_(const uint8_t *payload, uint16_t size, uint16
       raw_red = payload[used];
       red = green = blue = (float)raw_red / 255.0f;
       this->last_values_[0] = red;
-      ESP_LOGV(TAG, "[%u] Received sACN MONO data for '%s': Raw=%02X (%d), Scaled=%d%%", 
-               millis(), this->state_->get_name().c_str(), 
-               raw_red, raw_red, (int)(red * 100));
+      ESP_LOGD(TAG, "[MONO] Raw=%d, Scaled=%f", raw_red, red);
       break;
     }
       
@@ -138,19 +136,21 @@ uint16_t SACNLightEffect::process_(const uint8_t *payload, uint16_t size, uint16
       raw_green = payload[used + 1];
       raw_blue = payload[used + 2];
       
+      ESP_LOGD(TAG, "[RGB-RAW] Input values: R=%d, G=%d, B=%d", raw_red, raw_green, raw_blue);
+      
       // Simple linear scaling from 0-255 to 0.0-1.0
       red = (float)raw_red / 255.0f;
       green = (float)raw_green / 255.0f;
       blue = (float)raw_blue / 255.0f;
       
+      ESP_LOGD(TAG, "[RGB-SCALED] After 0-255 to 0.0-1.0 scaling: R=%f, G=%f, B=%f", red, green, blue);
+      
       this->last_values_[0] = red;
       this->last_values_[1] = green;
       this->last_values_[2] = blue;
-      ESP_LOGV(TAG, "[%u] Received sACN RGB data for '%s': Raw=[%02X %02X %02X] (%d,%d,%d), Scaled=[%d%% %d%% %d%%]", 
-               millis(), this->state_->get_name().c_str(), 
-               raw_red, raw_green, raw_blue,
-               raw_red, raw_green, raw_blue,
-               (int)(red * 100), (int)(green * 100), (int)(blue * 100));
+      
+      ESP_LOGD(TAG, "[RGB-STORED] Values stored in last_values_: R=%f, G=%f, B=%f", 
+               this->last_values_[0], this->last_values_[1], this->last_values_[2]);
       break;
     }
       
@@ -160,21 +160,25 @@ uint16_t SACNLightEffect::process_(const uint8_t *payload, uint16_t size, uint16
       raw_blue = payload[used + 2];
       raw_white = payload[used + 3];
       
+      ESP_LOGD(TAG, "[RGBW-RAW] Input values: R=%d, G=%d, B=%d, W=%d", 
+               raw_red, raw_green, raw_blue, raw_white);
+      
       // Simple linear scaling from 0-255 to 0.0-1.0
       red = (float)raw_red / 255.0f;
       green = (float)raw_green / 255.0f;
       blue = (float)raw_blue / 255.0f;
       white = (float)raw_white / 255.0f;
       
+      ESP_LOGD(TAG, "[RGBW-SCALED] After 0-255 to 0.0-1.0 scaling: R=%f, G=%f, B=%f, W=%f", 
+               red, green, blue, white);
+      
       this->last_values_[0] = red;
       this->last_values_[1] = green;
       this->last_values_[2] = blue;
       this->last_values_[3] = white;
-      ESP_LOGV(TAG, "[%u] Received sACN RGBW data for '%s': Raw=[%02X %02X %02X %02X] (%d,%d,%d,%d), Scaled=[%d%% %d%% %d%% %d%%]", 
-               millis(), this->state_->get_name().c_str(), 
-               raw_red, raw_green, raw_blue, raw_white,
-               raw_red, raw_green, raw_blue, raw_white,
-               (int)(red * 100), (int)(green * 100), (int)(blue * 100), (int)(white * 100));
+      
+      ESP_LOGD(TAG, "[RGBW-STORED] Values stored in last_values_: R=%f, G=%f, B=%f, W=%f", 
+               this->last_values_[0], this->last_values_[1], this->last_values_[2], this->last_values_[3]);
       break;
     }
   }
@@ -185,36 +189,56 @@ uint16_t SACNLightEffect::process_(const uint8_t *payload, uint16_t size, uint16
   // Set color mode and values based on channel type
   switch (this->channel_type_) {
     case SACN_MONO:
-      call.set_state(true);  // Ensure light is on
+      call.set_state(true);
       call.set_color_mode(light::ColorMode::BRIGHTNESS);
       call.set_brightness(red);
+      ESP_LOGD(TAG, "[MONO-CALL] Setting brightness=%f", red);
       break;
       
     case SACN_RGB:
-      call.set_state(true);  // Ensure light is on
+      call.set_state(true);
       call.set_color_mode(light::ColorMode::RGB);
       call.set_red(red);
       call.set_green(green);
       call.set_blue(blue);
+      ESP_LOGD(TAG, "[RGB-CALL] Setting light values: R=%f, G=%f, B=%f", red, green, blue);
+      
+      // Debug the current light state
+      ESP_LOGD(TAG, "[RGB-STATE] Current light state: on=%d, color_mode=%d", 
+               this->state_->current_values.is_on(), (int)this->state_->current_values.get_color_mode());
+      ESP_LOGD(TAG, "[RGB-STATE] Current RGB values: R=%f, G=%f, B=%f",
+               this->state_->current_values.get_red(),
+               this->state_->current_values.get_green(),
+               this->state_->current_values.get_blue());
       break;
       
     case SACN_RGBW:
-      call.set_state(true);  // Ensure light is on
+      call.set_state(true);
       call.set_color_mode(light::ColorMode::RGB_WHITE);
       call.set_red(red);
       call.set_green(green);
       call.set_blue(blue);
       call.set_white(white);
+      ESP_LOGD(TAG, "[RGBW-CALL] Setting light values: R=%f, G=%f, B=%f, W=%f", red, green, blue, white);
       break;
   }
 
   // Configure the light call
-  call.set_transition_length(0);  // Instant transitions for DMX-like control
-  call.set_publish(false);  // Don't publish state changes to HA during effect
-  call.set_save(false);  // Don't save state
+  call.set_transition_length(0);
+  call.set_publish(false);
+  call.set_save(false);
 
   // Apply the state change
   call.perform();
+  ESP_LOGD(TAG, "[CALL] Light call performed");
+
+  // Debug the light state after the call
+  ESP_LOGD(TAG, "[FINAL-STATE] Light state after call: on=%d, color_mode=%d", 
+           this->state_->current_values.is_on(), (int)this->state_->current_values.get_color_mode());
+  ESP_LOGD(TAG, "[FINAL-STATE] Final RGB values: R=%f, G=%f, B=%f",
+           this->state_->current_values.get_red(),
+           this->state_->current_values.get_green(),
+           this->state_->current_values.get_blue());
 
   // Manually call loop to ensure the light state is updated immediately
   this->state_->loop();
