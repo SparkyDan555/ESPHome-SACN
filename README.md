@@ -9,8 +9,11 @@ This component adds support for the sACN (E1.31) protocol to ESPHome, allowing a
 - Configurable universe (1-63999)
 - Configurable start channel (1-512)
 - Unicast and multicast transport modes
-- 2.5s timeout with fallback to Home Assistant state
+- Configurable timeout with fallback to Home Assistant state
 - Proper packet validation and error handling
+- Blank on start option (similar to WLED)
+- Clean state transitions between sACN and Home Assistant control
+- Efficient logging with verbose DMX value logging option
 
 ## Installation
 
@@ -48,6 +51,7 @@ light:
           channel_type: RGB
           transport_mode: unicast
           timeout: 2500ms
+          blank_on_start: true
 ```
 
 ### Configuration Variables
@@ -66,6 +70,27 @@ light:
   - `multicast`: Multicast communication
   Default: `unicast`
 - **timeout** (*Optional*, time): Time to wait without sACN data before reverting to Home Assistant control. Default: `2500ms`
+- **blank_on_start** (*Optional*, bool): Whether to blank the light when the effect starts. Default: `false`
+
+## State Behavior
+
+The component implements the following state behavior:
+
+1. **Initial State**: When configured with `blank_on_start: true`, the light will appear as white/full brightness in Home Assistant but the physical output will be blank.
+
+2. **Effect Start**: 
+   - With `blank_on_start: true`: Light blanks when effect starts
+   - With `blank_on_start: false`: Light maintains its current state
+
+3. **During Effect**:
+   - Light responds to incoming sACN data
+   - DMX values are logged at verbose level
+   - Single timeout notification when stream stops
+
+4. **Effect Stop/Timeout**:
+   - Light blanks on timeout
+   - Clean return to Home Assistant control
+   - No recursive state updates
 
 ## Example Configurations
 
@@ -104,6 +129,7 @@ light:
           channel_type: RGB
           transport_mode: unicast
           timeout: 2500ms
+          blank_on_start: true
 ```
 
 ### Addressable LED Strip
@@ -123,6 +149,7 @@ light:
           channel_type: RGB
           transport_mode: unicast
           timeout: 2500ms
+          blank_on_start: true
 ```
 
 ### RGBW Light
@@ -143,6 +170,7 @@ light:
           channel_type: RGBW
           transport_mode: unicast
           timeout: 2500ms
+          blank_on_start: true
 ```
 
 ## Compatibility
@@ -154,19 +182,25 @@ This component has been tested with:
 
 ## Troubleshooting
 
-1. Enable debug logging to see detailed sACN packet information:
+1. Enable verbose logging to see detailed sACN packet and DMX value information:
 ```yaml
 logger:
-  level: DEBUG
+  level: VERBOSE
   logs:
-    sacn: DEBUG
+    sacn: VERBOSE
 ```
 
 2. Common issues:
    - No data received: Check universe and network settings
    - Wrong colors: Verify channel type matches your configuration
    - Flickering: Check network stability and timeout settings
+   - Light not blanking: Verify `blank_on_start` is set to true
+   - Multiple timeout messages: Update to latest version
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
 
 ## License
 
-This component is licensed under the MIT License. 
+This component is licensed under the MIT License. See the [LICENSE](LICENSE) file for details. 
