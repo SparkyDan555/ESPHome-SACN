@@ -118,21 +118,16 @@ uint16_t SACNLightEffect::process_(const uint8_t *payload, uint16_t size, uint16
 
   this->last_sacn_time_ms_ = millis();
 
-  // Get the light output for direct control
-  auto *light_output = this->state_->get_output();
-  if (light_output == nullptr) {
-    ESP_LOGW(TAG, "No light output available");
-    return 0;
-  }
-
-  // Enable power supply
-  light_output->set_power_supply_mode(true);
-
   // Process based on channel type and directly set output values
   switch (this->channel_type_) {
     case SACN_MONO: {
       float value = (float)payload[used] / 255.0f;
-      light_output->set_current_values_as_binary(value);
+      auto call = this->state_->make_call();
+      call.set_state(true);
+      call.set_brightness(value);
+      call.set_transition_length(0);
+      call.set_publish(false);
+      call.perform();
       ESP_LOGV(TAG, "Setting mono output to %f", value);
       break;
     }
@@ -142,7 +137,17 @@ uint16_t SACNLightEffect::process_(const uint8_t *payload, uint16_t size, uint16
       float green = (float)payload[used + 1] / 255.0f;
       float blue = (float)payload[used + 2] / 255.0f;
       
-      light_output->set_current_values_as_rgb(red, green, blue);
+      auto call = this->state_->make_call();
+      call.set_state(true);
+      call.set_color_mode(light::ColorMode::RGB);
+      call.set_red(red);
+      call.set_green(green);
+      call.set_blue(blue);
+      call.set_brightness(1.0f);  // Set full brightness to prevent scaling
+      call.set_transition_length(0);
+      call.set_publish(false);
+      call.perform();
+      
       ESP_LOGV(TAG, "Setting RGB outputs to R=%f, G=%f, B=%f", red, green, blue);
       break;
     }
@@ -153,20 +158,25 @@ uint16_t SACNLightEffect::process_(const uint8_t *payload, uint16_t size, uint16
       float blue = (float)payload[used + 2] / 255.0f;
       float white = (float)payload[used + 3] / 255.0f;
       
-      // For RGBWW lights, set both cold and warm white to the same value
-      if (this->state_->supports_color_mode(light::ColorMode::RGB_COLD_WARM_WHITE)) {
-        light_output->set_current_values_as_rgbww(red, green, blue, white, white);
-        ESP_LOGV(TAG, "Setting RGBWW outputs to R=%f, G=%f, B=%f, CW=%f, WW=%f", red, green, blue, white, white);
-      } else {
-        light_output->set_current_values_as_rgbw(red, green, blue, white);
-        ESP_LOGV(TAG, "Setting RGBW outputs to R=%f, G=%f, B=%f, W=%f", red, green, blue, white);
-      }
+      auto call = this->state_->make_call();
+      call.set_state(true);
+      call.set_color_mode(light::ColorMode::RGB_WHITE);
+      call.set_red(red);
+      call.set_green(green);
+      call.set_blue(blue);
+      call.set_white(white);
+      call.set_brightness(1.0f);  // Set full brightness to prevent scaling
+      call.set_transition_length(0);
+      call.set_publish(false);
+      call.perform();
+      
+      ESP_LOGV(TAG, "Setting RGBW outputs to R=%f, G=%f, B=%f, W=%f", red, green, blue, white);
       break;
     }
   }
 
-  // Write the values immediately
-  light_output->write_state();
+  // Call loop to ensure immediate update
+  this->state_->loop();
 
   return this->channel_type_;
 }
