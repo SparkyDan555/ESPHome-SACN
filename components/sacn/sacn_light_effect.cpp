@@ -138,33 +138,32 @@ uint16_t SACNLightEffect::process_(const uint8_t *payload, uint16_t size, uint16
     // Check if we're only using the white channel
     bool white_only = (raw_red == 0 && raw_green == 0 && raw_blue == 0 && raw_white > 0);
     
-    if (white_only && this->state_->supports_color_mode(light::ColorMode::COLOR_TEMPERATURE)) {
-      // If only white is active, use color temperature mode
-      call.set_color_mode(light::ColorMode::COLOR_TEMPERATURE);
-      // Set to neutral white temperature (4500K) and use brightness for intensity
-      call.set_color_temperature(4500);
-      call.set_brightness(white);
-      ESP_LOGV(TAG, "Using color temperature mode with brightness %f", white);
+    if (white_only) {
+      // If only white is active, try to use RGB_WHITE mode
+      call.set_color_mode_if_supported(light::ColorMode::RGB_WHITE);
+      call.set_red(0.0f);
+      call.set_green(0.0f);
+      call.set_blue(0.0f);
+      call.set_white(white);
+      call.set_brightness(1.0f);  // Use full brightness to prevent scaling
+      ESP_LOGV(TAG, "Using white-only mode with value %f", white);
     } else {
-      // If RGB is also active, use RGB mode with white channels
-      call.set_color_mode(light::ColorMode::RGB_COLD_WARM_WHITE);
+      // If RGB is also active, use RGB mode with white channel
+      call.set_color_mode_if_supported(light::ColorMode::RGB_WHITE);
       call.set_red(red);
       call.set_green(green);
       call.set_blue(blue);
-      
-      // Set both cold and warm white to the same value
-      call.set_cold_white(white);
-      call.set_warm_white(white);
+      call.set_white(white);
       
       // Set brightness to the maximum of all channels
       float max_brightness = std::max(std::max(red, green), std::max(blue, white));
       call.set_brightness(max_brightness);
       
-      ESP_LOGV(TAG, "Using RGB mode with white channels at %f", white);
+      ESP_LOGV(TAG, "Using RGB+W mode with values R=%f, G=%f, B=%f, W=%f", red, green, blue, white);
     }
   } else {
     // For RGB/MONO modes, use standard RGB mode
-    call.set_color_mode(light::ColorMode::RGB);
+    call.set_color_mode_if_supported(light::ColorMode::RGB);
     call.set_red(red);
     call.set_green(green);
     call.set_blue(blue);
