@@ -137,6 +137,7 @@ uint16_t SACNLightEffect::process_(const uint8_t *payload, uint16_t size, uint16
   if (this->channel_type_ == SACN_RGBW) {
     // Check if we're only using the white channel
     bool white_only = (raw_red == 0 && raw_green == 0 && raw_blue == 0 && raw_white > 0);
+    bool using_white = (raw_white > 0);
     
     if (white_only) {
       // If only white is active, try to use RGB_WHITE mode
@@ -148,18 +149,24 @@ uint16_t SACNLightEffect::process_(const uint8_t *payload, uint16_t size, uint16
       call.set_brightness(1.0f);  // Use full brightness to prevent scaling
       ESP_LOGV(TAG, "Using white-only mode with value %f", white);
     } else {
-      // If RGB is also active, use RGB mode with white channel
+      // If RGB is active, use RGB mode and only set white if it's being used
       call.set_color_mode_if_supported(light::ColorMode::RGB_WHITE);
       call.set_red(red);
       call.set_green(green);
       call.set_blue(blue);
-      call.set_white(white);
       
-      // Set brightness to the maximum of all channels
-      float max_brightness = std::max(std::max(red, green), std::max(blue, white));
+      // Only set white channel if it's actually being used
+      if (using_white) {
+        call.set_white(white);
+        ESP_LOGV(TAG, "Using RGB+W mode with values R=%f, G=%f, B=%f, W=%f", red, green, blue, white);
+      } else {
+        call.set_white(0.0f);
+        ESP_LOGV(TAG, "Using RGB mode with values R=%f, G=%f, B=%f (W disabled)", red, green, blue);
+      }
+      
+      // Set brightness to the maximum of active channels
+      float max_brightness = std::max(std::max(red, green), std::max(blue, using_white ? white : 0.0f));
       call.set_brightness(max_brightness);
-      
-      ESP_LOGV(TAG, "Using RGB+W mode with values R=%f, G=%f, B=%f, W=%f", red, green, blue, white);
     }
   } else {
     // For RGB/MONO modes, use standard RGB mode
