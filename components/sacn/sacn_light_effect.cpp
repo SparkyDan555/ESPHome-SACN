@@ -184,24 +184,28 @@ uint16_t SACNLightEffect::process_(const uint8_t *payload, uint16_t size, uint16
   }
 
   // Create a new light state call
-  auto call = this->state_->turn_on();
+  auto call = this->state_->make_call();
+  call.set_state(true);
   
   // Set color mode and values based on channel type
   switch (this->channel_type_) {
     case SACN_MONO:
-      call.set_state(true);
       call.set_color_mode(light::ColorMode::BRIGHTNESS);
       call.set_brightness(red);
       ESP_LOGD(TAG, "[MONO-CALL] Setting brightness=%f", red);
       break;
       
     case SACN_RGB:
-      call.set_state(true);
       call.set_color_mode(light::ColorMode::RGB);
       call.set_red(red);
       call.set_green(green);
       call.set_blue(blue);
-      ESP_LOGD(TAG, "[RGB-CALL] Setting light values: R=%f, G=%f, B=%f", red, green, blue);
+      // Force brightness to 1.0 to prevent auto-scaling
+      call.set_brightness(1.0f);
+      // Disable color brightness to prevent auto-scaling
+      call.set_color_brightness(1.0f);
+      ESP_LOGD(TAG, "[RGB-CALL] Setting light values: R=%f, G=%f, B=%f (brightness=1.0, color_brightness=1.0)", 
+               red, green, blue);
       
       // Debug the current light state
       ESP_LOGD(TAG, "[RGB-STATE] Current light state: on=%d, color_mode=%d", 
@@ -213,13 +217,17 @@ uint16_t SACNLightEffect::process_(const uint8_t *payload, uint16_t size, uint16
       break;
       
     case SACN_RGBW:
-      call.set_state(true);
       call.set_color_mode(light::ColorMode::RGB_WHITE);
       call.set_red(red);
       call.set_green(green);
       call.set_blue(blue);
       call.set_white(white);
-      ESP_LOGD(TAG, "[RGBW-CALL] Setting light values: R=%f, G=%f, B=%f, W=%f", red, green, blue, white);
+      // Force brightness to 1.0 to prevent auto-scaling
+      call.set_brightness(1.0f);
+      // Disable color brightness to prevent auto-scaling
+      call.set_color_brightness(1.0f);
+      ESP_LOGD(TAG, "[RGBW-CALL] Setting light values: R=%f, G=%f, B=%f, W=%f (brightness=1.0, color_brightness=1.0)", 
+               red, green, blue, white);
       break;
   }
 
