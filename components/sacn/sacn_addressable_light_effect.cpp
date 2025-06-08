@@ -3,32 +3,11 @@
 #include "sacn.h"
 #include "sacn_addressable_light_effect.h"
 #include "esphome/core/log.h"
-#include "esphome/core/hal.h"
 
 namespace esphome {
 namespace sacn {
 
 static const char *const TAG = "sacn_addressable_light_effect";
-
-// Gamma correction table for DMX values (gamma = 2.8)
-static const uint8_t DMX_GAMMA_TABLE[256] = {
-    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   1,   1,   1,   1,
-    1,   1,   1,   1,   1,   1,   1,   1,   1,   2,   2,   2,   2,   2,   2,   2,
-    2,   3,   3,   3,   3,   3,   3,   3,   4,   4,   4,   4,   4,   5,   5,   5,
-    5,   6,   6,   6,   6,   7,   7,   7,   7,   8,   8,   8,   9,   9,   9,   10,
-    10,  10,  11,  11,  11,  12,  12,  13,  13,  13,  14,  14,  15,  15,  16,  16,
-    17,  17,  18,  18,  19,  19,  20,  20,  21,  21,  22,  22,  23,  24,  24,  25,
-    25,  26,  27,  27,  28,  29,  29,  30,  31,  32,  32,  33,  34,  35,  35,  36,
-    37,  38,  39,  39,  40,  41,  42,  43,  44,  45,  46,  47,  48,  49,  50,  50,
-    51,  52,  54,  55,  56,  57,  58,  59,  60,  61,  62,  63,  64,  66,  67,  68,
-    69,  70,  72,  73,  74,  75,  77,  78,  79,  81,  82,  83,  85,  86,  87,  89,
-    90,  92,  93,  95,  96,  98,  99,  101, 102, 104, 105, 107, 109, 110, 112, 114,
-    115, 117, 119, 120, 122, 124, 126, 127, 129, 131, 133, 135, 137, 138, 140, 142,
-    144, 146, 148, 150, 152, 154, 156, 158, 160, 162, 164, 167, 169, 171, 173, 175,
-    177, 180, 182, 184, 186, 189, 191, 193, 196, 198, 200, 203, 205, 208, 210, 213,
-    215, 218, 220, 223, 225, 228, 231, 233, 236, 239, 241, 244, 247, 249, 252, 255
-};
 
 SACNAddressableLightEffect::SACNAddressableLightEffect(const std::string &name) : AddressableLightEffect(name) {}
 
@@ -137,28 +116,28 @@ uint16_t SACNAddressableLightEffect::process_(const uint8_t *payload, uint16_t s
     
     switch (this->channel_type_) {
       case SACN_MONO: {
-        uint8_t brightness = DMX_GAMMA_TABLE[payload[data_offset]];
-        Color color(brightness, brightness, brightness, 0);
+        float brightness = payload[data_offset] / 255.0f;
+        Color color(brightness * 255, brightness * 255, brightness * 255, 0);
         output.set(color);
         this->last_colors_[i] = color;
         break;
       }
       
       case SACN_RGB: {
-        Color color(DMX_GAMMA_TABLE[payload[data_offset]],     // Red
-                   DMX_GAMMA_TABLE[payload[data_offset + 1]],  // Green
-                   DMX_GAMMA_TABLE[payload[data_offset + 2]],  // Blue
-                   0);                                         // White
+        Color color(payload[data_offset],     // Red
+                   payload[data_offset + 1],  // Green
+                   payload[data_offset + 2],  // Blue
+                   0);                        // White
         output.set(color);
         this->last_colors_[i] = color;
         break;
       }
       
       case SACN_RGBW: {
-        Color color(DMX_GAMMA_TABLE[payload[data_offset]],     // Red
-                   DMX_GAMMA_TABLE[payload[data_offset + 1]],  // Green
-                   DMX_GAMMA_TABLE[payload[data_offset + 2]],  // Blue
-                   DMX_GAMMA_TABLE[payload[data_offset + 3]]); // White
+        Color color(payload[data_offset],     // Red
+                   payload[data_offset + 1],  // Green
+                   payload[data_offset + 2],  // Blue
+                   payload[data_offset + 3]); // White
         output.set(color);
         this->last_colors_[i] = color;
         break;
