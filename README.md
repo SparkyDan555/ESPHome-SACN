@@ -17,7 +17,27 @@ This component adds support for the sACN (E1.31) protocol to ESPHome, allowing a
 
 ## Installation
 
-1. Copy the `components/sacn` directory to your ESPHome `custom_components` directory
+You can install this component either by copying the files locally or by using ESPHome's external components feature with Git.
+
+### Method 1: Git Installation (Recommended)
+
+Add the following to your ESPHome configuration:
+
+```yaml
+external_components:
+  - source:
+      type: git
+      url: https://github.com/SparkyDan555/ESPHome-SACN
+    components: [ sacn ]
+    refresh: always
+
+# Enable sACN component
+sacn:
+```
+
+### Method 2: Local Installation
+
+1. Copy the `components/sacn` directory to your ESPHome `config/components` directory
 2. Add the following to your ESPHome configuration:
 
 ```yaml
