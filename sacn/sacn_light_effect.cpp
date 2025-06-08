@@ -19,6 +19,10 @@ void SACNLightEffect::start() {
     this->last_values_[i] = 0.0f;
   }
   
+  // Initialize base classes first
+  LightEffect::start();
+  SACNLightEffectBase::start();
+  
   // Set initial state in Home Assistant - show as white at full brightness
   {
     auto call = this->state_->make_call();
@@ -34,7 +38,7 @@ void SACNLightEffect::start() {
     call.perform();
   }
 
-  // Immediately blank the actual light output
+  // Immediately blank the actual light output - do this last to ensure it takes effect
   {
     auto call = this->state_->make_call();
     call.set_state(true);  // Keep light "on" but...
@@ -50,8 +54,8 @@ void SACNLightEffect::start() {
     call.perform();
   }
   
-  LightEffect::start();
-  SACNLightEffectBase::start();
+  // Ensure the light state is updated immediately
+  this->state_->loop();
 }
 
 void SACNLightEffect::stop() {
