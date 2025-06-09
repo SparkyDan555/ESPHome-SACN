@@ -141,39 +141,17 @@ uint16_t SACNLightEffect::process_(const uint8_t *payload, uint16_t size, uint16
   auto call = this->state_->turn_on();
 
   if (this->channel_type_ == SACN_RGBWW) {
-    call.set_color_mode(light::ColorMode::RGB_COLD_WARM_WHITE);
-    // Only set RGB if all white channels are zero
-    if (raw_cold_white == 0 && raw_warm_white == 0) {
-      call.set_red(red);
-      call.set_green(green);
-      call.set_blue(blue);
-    } else {
-      call.set_red(0.0f);
-      call.set_green(0.0f);
-      call.set_blue(0.0f);
-    }
-    // Only set cold white if channel 4 is nonzero
-    if (raw_cold_white > 0) {
-      call.set_cold_white(cold_white);
-    } else {
-      call.set_cold_white(0.0f);
-    }
-    // Only set warm white if channel 5 is nonzero
-    if (raw_warm_white > 0) {
-      call.set_warm_white(warm_white);
-    } else {
-      call.set_warm_white(0.0f);
-    }
-    // Debug: Log values being sent to hardware outputs (use local variables, not call.get_*)
-    ESP_LOGD(TAG, "HW OUT: R=%.2f G=%.2f B=%.2f CW=%.2f WW=%.2f", \
-      (raw_cold_white == 0 && raw_warm_white == 0) ? red : 0.0f, \
-      (raw_cold_white == 0 && raw_warm_white == 0) ? green : 0.0f, \
-      (raw_cold_white == 0 && raw_warm_white == 0) ? blue : 0.0f, \
-      raw_cold_white > 0 ? cold_white : 0.0f, \
-      raw_warm_white > 0 ? warm_white : 0.0f);
+    call.set_color_mode_if_supported(light::ColorMode::RGB_COLD_WARM_WHITE);
+    call.set_red_if_supported(red);
+    call.set_green_if_supported(green);
+    call.set_blue_if_supported(blue);
+    call.set_cold_white_if_supported(cold_white);
+    call.set_warm_white_if_supported(warm_white);
+    // Debug: Log values being sent to hardware outputs
+    ESP_LOGD(TAG, "HW OUT: R=%.2f G=%.2f B=%.2f CW=%.2f WW=%.2f", red, green, blue, cold_white, warm_white);
     ESP_LOGV(TAG, "Setting RGBWW values: R=%f, G=%f, B=%f, CW=%f, WW=%f", red, green, blue, cold_white, warm_white);
     float max_brightness = std::max({red, green, blue, cold_white, warm_white});
-    call.set_brightness(max_brightness);
+    call.set_brightness_if_supported(max_brightness);
   } else if (this->channel_type_ == SACN_RGBW) {
     call.set_color_mode(light::ColorMode::RGB_COLD_WARM_WHITE);
     call.set_red(red);
