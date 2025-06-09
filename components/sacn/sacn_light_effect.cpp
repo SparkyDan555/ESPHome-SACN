@@ -123,29 +123,36 @@ uint16_t SACNLightEffect::process_(const uint8_t *payload, uint16_t size, uint16
   uint8_t raw_green = this->channel_type_ >= SACN_RGB ? payload[used + 1] : 0;
   uint8_t raw_blue = this->channel_type_ >= SACN_RGB ? payload[used + 2] : 0;
   uint8_t raw_white = this->channel_type_ == SACN_RGBW ? payload[used + 3] : 0;
+  uint8_t raw_cold_white = this->channel_type_ == SACN_RGBWW ? payload[used + 3] : 0;
+  uint8_t raw_warm_white = this->channel_type_ == SACN_RGBWW ? payload[used + 4] : 0;
 
   // Convert DMX values to float (0.0-1.0)
   float red = (float)raw_red / 255.0f;
   float green = (float)raw_green / 255.0f;
   float blue = (float)raw_blue / 255.0f;
   float white = (float)raw_white / 255.0f;
+  float cold_white = (float)raw_cold_white / 255.0f;
+  float warm_white = (float)raw_warm_white / 255.0f;
 
   // Create a new light state call
   auto call = this->state_->turn_on();
 
-  // For RGBW mode, handle white channel specially
-  if (this->channel_type_ == SACN_RGBW) {
-    // Force RGB_COLD_WARM_WHITE mode for RGBWW lights
+  if (this->channel_type_ == SACN_RGBWW) {
     call.set_color_mode(light::ColorMode::RGB_COLD_WARM_WHITE);
-    
-    // Set RGB channels
     call.set_red(red);
     call.set_green(green);
     call.set_blue(blue);
-    
-    // Only set white channels if white is being used, otherwise force them to 0
+    call.set_cold_white(cold_white);
+    call.set_warm_white(warm_white);
+    ESP_LOGV(TAG, "Setting RGBWW values: R=%f, G=%f, B=%f, CW=%f, WW=%f", red, green, blue, cold_white, warm_white);
+    float max_brightness = std::max({red, green, blue, cold_white, warm_white});
+    call.set_brightness(max_brightness);
+  } else if (this->channel_type_ == SACN_RGBW) {
+    call.set_color_mode(light::ColorMode::RGB_COLD_WARM_WHITE);
+    call.set_red(red);
+    call.set_green(green);
+    call.set_blue(blue);
     if (raw_white > 0) {
-      // Set both cold and warm white to the same value for balanced white output
       call.set_cold_white(white);
       call.set_warm_white(white);
       ESP_LOGV(TAG, "Setting RGBWW values: R=%f, G=%f, B=%f, W=%f", red, green, blue, white);
@@ -154,8 +161,6 @@ uint16_t SACNLightEffect::process_(const uint8_t *payload, uint16_t size, uint16
       call.set_warm_white(0.0f);
       ESP_LOGV(TAG, "Setting RGB values: R=%f, G=%f, B=%f (W=0)", red, green, blue);
     }
-    
-    // Set brightness to maximum of active channels
     float max_brightness = std::max(std::max(red, green), std::max(blue, raw_white > 0 ? white : 0.0f));
     call.set_brightness(max_brightness);
   } else {
@@ -184,4 +189,4 @@ uint16_t SACNLightEffect::process_(const uint8_t *payload, uint16_t size, uint16
 }  // namespace sacn
 }  // namespace esphome
 
-#endif  // USE_ARDUINO 
+#endif  // USE_ARDUINO

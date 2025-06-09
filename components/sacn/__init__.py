@@ -19,7 +19,8 @@ SACNComponent = sacn_ns.class_("SACNComponent", cg.Component)
 SACN_CHANNEL_TYPE = {
     "MONO": sacn_ns.SACN_MONO,
     "RGB": sacn_ns.SACN_RGB,
-    "RGBW": sacn_ns.SACN_RGBW
+    "RGBW": sacn_ns.SACN_RGBW,
+    "RGBWW": sacn_ns.SACN_RGBWW
 }
 
 SACN_TRANSPORT_MODE = {
@@ -38,6 +39,7 @@ CONF_SACN_BLANK_ON_START = "blank_on_start"
 CHANNEL_MONO = "MONO"
 CHANNEL_RGB = "RGB"
 CHANNEL_RGBW = "RGBW"
+CHANNEL_RGBWW = "RGBWW"
 
 CONFIG_SCHEMA = cv.All(
     cv.Schema(
@@ -60,7 +62,7 @@ async def to_code(config):
         cv.GenerateID(CONF_SACN_ID): cv.use_id(SACNComponent),
         cv.Optional(CONF_SACN_UNIVERSE, default=1): cv.int_range(min=1, max=63999),
         cv.Optional(CONF_SACN_START_CHANNEL, default=1): cv.int_range(min=1, max=512),
-        cv.Optional(CONF_SACN_CHANNEL_TYPE, default=CHANNEL_RGB): cv.one_of(CHANNEL_MONO, CHANNEL_RGB, CHANNEL_RGBW, upper=True),
+        cv.Optional(CONF_SACN_CHANNEL_TYPE, default=CHANNEL_RGB): cv.one_of(CHANNEL_MONO, CHANNEL_RGB, CHANNEL_RGBW, CHANNEL_RGBWW, upper=True),
         cv.Optional(CONF_SACN_TRANSPORT_MODE, default="UNICAST"): cv.one_of(*SACN_TRANSPORT_MODE, upper=True),
         cv.Optional(CONF_SACN_TIMEOUT, default="2500ms"): cv.positive_time_period_milliseconds,
         cv.Optional(CONF_SACN_BLANK_ON_START, default=True): cv.boolean,
@@ -74,7 +76,7 @@ async def to_code(config):
         cv.GenerateID(CONF_SACN_ID): cv.use_id(SACNComponent),
         cv.Optional(CONF_SACN_UNIVERSE, default=1): cv.int_range(min=1, max=63999),
         cv.Optional(CONF_SACN_START_CHANNEL, default=1): cv.int_range(min=1, max=512),
-        cv.Optional(CONF_SACN_CHANNEL_TYPE, default="RGB"): cv.one_of(*SACN_CHANNEL_TYPE, upper=True),
+        cv.Optional(CONF_SACN_CHANNEL_TYPE, default="RGB"): cv.one_of(CHANNEL_MONO, CHANNEL_RGB, CHANNEL_RGBW, CHANNEL_RGBWW, upper=True),
         cv.Optional(CONF_SACN_TRANSPORT_MODE, default="UNICAST"): cv.one_of(*SACN_TRANSPORT_MODE, upper=True),
         cv.Optional(CONF_SACN_TIMEOUT, default="2500ms"): cv.positive_time_period_milliseconds,
     },
@@ -91,4 +93,4 @@ async def sacn_light_effect_to_code(config, effect_id):
     cg.add(var.set_timeout(config[CONF_SACN_TIMEOUT]))
     cg.add(var.set_blank_on_start(config[CONF_SACN_BLANK_ON_START]))
 
-    return var 
+    return var

@@ -31,4 +31,4 @@ class SACNAddressableLightEffect : public SACNLightEffectBase, public light::Add
 }  // namespace sacn
 }  // namespace esphome
 
-#endif  // USE_ARDUINO 
+#endif  // USE_ARDUINO

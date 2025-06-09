@@ -93,6 +93,9 @@ uint16_t SACNAddressableLightEffect::process_(const uint8_t *payload, uint16_t s
     case SACN_RGBW:
       channels_per_pixel = 4;
       break;
+    case SACN_RGBWW:
+      channels_per_pixel = 5;
+      break;
     default:
       return 0;
   }
@@ -113,7 +116,6 @@ uint16_t SACNAddressableLightEffect::process_(const uint8_t *payload, uint16_t s
   for (uint16_t i = 0; i < num_pixels; i++) {
     uint16_t data_offset = used + (i * channels_per_pixel);
     auto output = (*it)[i];
-    
     switch (this->channel_type_) {
       case SACN_MONO: {
         float brightness = payload[data_offset] / 255.0f;
@@ -122,7 +124,6 @@ uint16_t SACNAddressableLightEffect::process_(const uint8_t *payload, uint16_t s
         this->last_colors_[i] = color;
         break;
       }
-      
       case SACN_RGB: {
         Color color(payload[data_offset],     // Red
                    payload[data_offset + 1],  // Green
@@ -132,12 +133,21 @@ uint16_t SACNAddressableLightEffect::process_(const uint8_t *payload, uint16_t s
         this->last_colors_[i] = color;
         break;
       }
-      
       case SACN_RGBW: {
         Color color(payload[data_offset],     // Red
                    payload[data_offset + 1],  // Green
                    payload[data_offset + 2],  // Blue
                    payload[data_offset + 3]); // White
+        output.set(color);
+        this->last_colors_[i] = color;
+        break;
+      }
+      case SACN_RGBWW: {
+        Color color(payload[data_offset],     // Red
+                   payload[data_offset + 1],  // Green
+                   payload[data_offset + 2],  // Blue
+                   payload[data_offset + 3],  // Cold White
+                   payload[data_offset + 4]); // Warm White
         output.set(color);
         this->last_colors_[i] = color;
         break;
@@ -152,4 +162,4 @@ uint16_t SACNAddressableLightEffect::process_(const uint8_t *payload, uint16_t s
 }  // namespace sacn
 }  // namespace esphome
 
-#endif  // USE_ARDUINO 
+#endif  // USE_ARDUINO

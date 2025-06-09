@@ -25,7 +25,7 @@ class SACNLightEffect : public SACNLightEffectBase, public light::LightEffect {
   uint16_t process_(const uint8_t *payload, uint16_t size, uint16_t used) override;
   
   // Store the last received values for each channel
-  float last_values_[4] = {0.0f, 0.0f, 0.0f, 0.0f};  // RGBW values
+  float last_values_[5] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f};  // RGBWW values
   
   // Store the last time we logged (for rate limiting logs)
   uint32_t last_log_time_ms_{0};
@@ -38,4 +38,4 @@ class SACNLightEffect : public SACNLightEffectBase, public light::LightEffect {
 }  // namespace sacn
 }  // namespace esphome
 
-#endif  // USE_ARDUINO 
+#endif  // USE_ARDUINO

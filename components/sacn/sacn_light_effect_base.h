@@ -14,7 +14,8 @@ class SACNComponent;
 enum SACNChannelType {
   SACN_MONO = 1,  // Single channel (intensity)
   SACN_RGB = 3,   // RGB channels
-  SACN_RGBW = 4   // RGBW channels
+  SACN_RGBW = 4,   // RGBW channels
+  SACN_RGBWW = 5   // RGBWW channels (RGB + Cold White + Warm White)
 };
 
 enum SACNTransportMode {
@@ -63,4 +64,4 @@ class SACNLightEffectBase {
 }  // namespace sacn
 }  // namespace esphome
 
-#endif  // USE_ARDUINO 
+#endif  // USE_ARDUINO
