@@ -164,8 +164,13 @@ uint16_t SACNLightEffect::process_(const uint8_t *payload, uint16_t size, uint16
     } else {
       call.set_warm_white(0.0f);
     }
-    // Debug: Log values being sent to hardware outputs
-    ESP_LOGD(TAG, "HW OUT: R=%.2f G=%.2f B=%.2f CW=%.2f WW=%.2f", call.get_red(), call.get_green(), call.get_blue(), call.get_cold_white(), call.get_warm_white());
+    // Debug: Log values being sent to hardware outputs (use local variables, not call.get_*)
+    ESP_LOGD(TAG, "HW OUT: R=%.2f G=%.2f B=%.2f CW=%.2f WW=%.2f", \
+      (raw_cold_white == 0 && raw_warm_white == 0) ? red : 0.0f, \
+      (raw_cold_white == 0 && raw_warm_white == 0) ? green : 0.0f, \
+      (raw_cold_white == 0 && raw_warm_white == 0) ? blue : 0.0f, \
+      raw_cold_white > 0 ? cold_white : 0.0f, \
+      raw_warm_white > 0 ? warm_white : 0.0f);
     ESP_LOGV(TAG, "Setting RGBWW values: R=%f, G=%f, B=%f, CW=%f, WW=%f", red, green, blue, cold_white, warm_white);
     float max_brightness = std::max({red, green, blue, cold_white, warm_white});
     call.set_brightness(max_brightness);
