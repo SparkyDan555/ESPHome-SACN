@@ -126,6 +126,9 @@ uint16_t SACNLightEffect::process_(const uint8_t *payload, uint16_t size, uint16
   uint8_t raw_cold_white = this->channel_type_ == SACN_RGBWW ? payload[used + 3] : 0;
   uint8_t raw_warm_white = this->channel_type_ == SACN_RGBWW ? payload[used + 4] : 0;
 
+  // Debug: Log incoming DMX values for all 5 channels
+  ESP_LOGD(TAG, "DMX: R=%d G=%d B=%d CW=%d WW=%d", raw_red, raw_green, raw_blue, raw_cold_white, raw_warm_white);
+
   // Convert DMX values to float (0.0-1.0)
   float red = (float)raw_red / 255.0f;
   float green = (float)raw_green / 255.0f;
@@ -161,6 +164,8 @@ uint16_t SACNLightEffect::process_(const uint8_t *payload, uint16_t size, uint16
     } else {
       call.set_warm_white(0.0f);
     }
+    // Debug: Log values being sent to hardware outputs
+    ESP_LOGD(TAG, "HW OUT: R=%.2f G=%.2f B=%.2f CW=%.2f WW=%.2f", call.get_red(), call.get_green(), call.get_blue(), call.get_cold_white(), call.get_warm_white());
     ESP_LOGV(TAG, "Setting RGBWW values: R=%f, G=%f, B=%f, CW=%f, WW=%f", red, green, blue, cold_white, warm_white);
     float max_brightness = std::max({red, green, blue, cold_white, warm_white});
     call.set_brightness(max_brightness);
