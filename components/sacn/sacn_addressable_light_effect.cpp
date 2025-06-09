@@ -143,17 +143,15 @@ uint16_t SACNAddressableLightEffect::process_(const uint8_t *payload, uint16_t s
         break;
       }
       case SACN_RGBWW: {
-        // Set RGB using Color, set cold/warm white as best effort
+        // Set RGB using Color, but do NOT set white (leave at 0)
         Color color(payload[data_offset],     // Red
                    payload[data_offset + 1],  // Green
                    payload[data_offset + 2],  // Blue
                    0);                        // White (not used)
         output.set(color);
-        // For addressable, set white as average of cold/warm for legacy compatibility
-        uint8_t cold = payload[data_offset + 3];
-        uint8_t warm = payload[data_offset + 4];
-        uint8_t avg_white = (cold + warm) / 2;
-        output.set_white(avg_white);
+        // Only set cold and warm white, do NOT set white or simulate white with RGB
+        output.set_cold_white(payload[data_offset + 3] / 255.0f);
+        output.set_warm_white(payload[data_offset + 4] / 255.0f);
         this->last_colors_[i] = color;
         break;
       }
