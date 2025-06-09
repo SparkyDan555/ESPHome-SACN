@@ -139,10 +139,17 @@ uint16_t SACNLightEffect::process_(const uint8_t *payload, uint16_t size, uint16
 
   if (this->channel_type_ == SACN_RGBWW) {
     call.set_color_mode(light::ColorMode::RGB_COLD_WARM_WHITE);
-    call.set_red(red);
-    call.set_green(green);
-    call.set_blue(blue);
-    // Only set cold and warm white, do NOT set white or emulate white with RGB
+    // Only set RGB if channels 1-3 are nonzero and channels 4/5 are zero
+    if (raw_cold_white == 0 && raw_warm_white == 0) {
+      call.set_red(red);
+      call.set_green(green);
+      call.set_blue(blue);
+    } else {
+      // If either cold or warm white is nonzero, force RGB to 0
+      call.set_red(0.0f);
+      call.set_green(0.0f);
+      call.set_blue(0.0f);
+    }
     call.set_cold_white(cold_white);
     call.set_warm_white(warm_white);
     ESP_LOGV(TAG, "Setting RGBWW values: R=%f, G=%f, B=%f, CW=%f, WW=%f", red, green, blue, cold_white, warm_white);
