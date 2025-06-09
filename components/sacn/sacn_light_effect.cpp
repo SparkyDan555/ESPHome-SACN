@@ -150,8 +150,15 @@ uint16_t SACNLightEffect::process_(const uint8_t *payload, uint16_t size, uint16
     // Debug: Log values being sent to hardware outputs
     ESP_LOGD(TAG, "HW OUT: R=%.2f G=%.2f B=%.2f CW=%.2f WW=%.2f", red, green, blue, cold_white, warm_white);
     ESP_LOGV(TAG, "Setting RGBWW values: R=%f, G=%f, B=%f, CW=%f, WW=%f", red, green, blue, cold_white, warm_white);
+    float max_rgb = std::max({red, green, blue});
     float max_brightness = std::max({red, green, blue, cold_white, warm_white});
     call.set_brightness_if_supported(max_brightness);
+    // Set color_brightness: if any RGB is on, use max_rgb, else 0 (so white can shine alone)
+    if (max_rgb > 0.0f) {
+      call.set_color_brightness_if_supported(max_rgb);
+    } else {
+      call.set_color_brightness_if_supported(0.0f);
+    }
   } else if (this->channel_type_ == SACN_RGBW) {
     call.set_color_mode(light::ColorMode::RGB_COLD_WARM_WHITE);
     call.set_red(red);
