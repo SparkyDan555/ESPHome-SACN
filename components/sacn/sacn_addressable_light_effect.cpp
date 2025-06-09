@@ -149,9 +149,13 @@ uint16_t SACNAddressableLightEffect::process_(const uint8_t *payload, uint16_t s
                    payload[data_offset + 2],  // Blue
                    0);                        // White (not used)
         output.set(color);
-        // Only set cold and warm white, do NOT set white or simulate white with RGB
-        output.set_cold_white(payload[data_offset + 3] / 255.0f);
-        output.set_warm_white(payload[data_offset + 4] / 255.0f);
+        // ESPColorView does not support set_cold_white/set_warm_white.
+        // As a fallback, set the white channel to cold or warm white, whichever is higher.
+        // This is the best possible mapping for addressable strips with only a single white channel.
+        float cold_white = payload[data_offset + 3] / 255.0f;
+        float warm_white = payload[data_offset + 4] / 255.0f;
+        float white = std::max(cold_white, warm_white);
+        output.set_white(white * 255);
         this->last_colors_[i] = color;
         break;
       }
