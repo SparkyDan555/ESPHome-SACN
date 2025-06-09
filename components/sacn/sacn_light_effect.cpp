@@ -142,9 +142,11 @@ uint16_t SACNLightEffect::process_(const uint8_t *payload, uint16_t size, uint16
     call.set_red(red);
     call.set_green(green);
     call.set_blue(blue);
+    // Only set cold and warm white, do NOT set white or emulate white with RGB
     call.set_cold_white(cold_white);
     call.set_warm_white(warm_white);
     ESP_LOGV(TAG, "Setting RGBWW values: R=%f, G=%f, B=%f, CW=%f, WW=%f", red, green, blue, cold_white, warm_white);
+    // Set brightness to the max of all 5 channels for best effect
     float max_brightness = std::max({red, green, blue, cold_white, warm_white});
     call.set_brightness(max_brightness);
   } else if (this->channel_type_ == SACN_RGBW) {
