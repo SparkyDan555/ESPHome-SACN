@@ -147,12 +147,12 @@ uint16_t SACNLightEffect::process_(const uint8_t *payload, uint16_t size, uint16
     call.set_cold_white_if_supported(cold_white);
     call.set_warm_white_if_supported(warm_white);
     float max_brightness = std::max({red, green, blue, cold_white, warm_white});
-    call.set_brightness(max_brightness);
+    call.set_brightness_if_supported(max_brightness);
     float max_rgb = std::max({red, green, blue});
     if( max_rgb > 0.0f) { // Only set color brightness if there is any RGB value
-      call.set_color_brightness(max_rgb);
+      call.set_color_brightness_if_supported(max_rgb);
     } else {
-      call.set_color_brightness(0.0f);
+      call.set_color_brightness_if_supported(0.0f);
     }
 
 
@@ -170,12 +170,12 @@ uint16_t SACNLightEffect::process_(const uint8_t *payload, uint16_t size, uint16
       call.set_warm_white_if_supported(0.0f);
     }
     float max_brightness = std::max({red, green, blue, white});
-    call.set_brightness(max_brightness);
+    call.set_brightness_if_supported(max_brightness);
     float max_rgb = std::max({red, green, blue});
     if( max_rgb > 0.0f) { // Only set color brightness if there is any RGB value
-      call.set_color_brightness(max_rgb);
+      call.set_color_brightness_if_supported(max_rgb);
     } else {
-      call.set_color_brightness(0.0f);
+      call.set_color_brightness_if_supported(0.0f);
     }
 
   } else if (this->channel_type_ == SACN_RGB) {
@@ -186,7 +186,7 @@ uint16_t SACNLightEffect::process_(const uint8_t *payload, uint16_t size, uint16
     call.set_cold_white_if_supported(0.0f);
     call.set_warm_white_if_supported(0.0f);
     float max_rgb = std::max({red, green, blue});
-    call.set_color_brightness(max_rgb); // Set color brightness based on RGB values
+    call.set_color_brightness_if_supported(max_rgb); // Set color brightness based on RGB values
 
   } else if (this->channel_type_ == SACN_MONO) {
     // For MONO modes, use standard BRIGHTNESS mode
@@ -197,9 +197,8 @@ uint16_t SACNLightEffect::process_(const uint8_t *payload, uint16_t size, uint16
     call.set_white_if_supported(1.0f);
     call.set_cold_white_if_supported(1.0f);
     call.set_warm_white_if_supported(1.0f);
-    call.set_brightness(mono);  // Use mono value for brightness
+    call.set_brightness_if_supported(mono);  // Use mono value for brightness
   }
-
 
   // Configure the light call to be as direct as possible
   call.set_transition_length(0);
