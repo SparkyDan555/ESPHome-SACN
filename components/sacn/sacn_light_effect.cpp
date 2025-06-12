@@ -140,7 +140,7 @@ uint16_t SACNLightEffect::process_(const uint8_t *payload, uint16_t size, uint16
   auto call = this->state_->turn_on();
 
   if (this->channel_type_ == SACN_RGBWW) {
-    call.set_color_mode(light::ColorMode::RGB_COLD_WARM_WHITE);
+    //call.set_color_mode(light::ColorMode::RGB_COLD_WARM_WHITE);
     call.set_red_if_supported(red);
     call.set_green_if_supported(green);
     call.set_blue_if_supported(blue);
@@ -157,7 +157,6 @@ uint16_t SACNLightEffect::process_(const uint8_t *payload, uint16_t size, uint16
 
 
   } else if (this->channel_type_ == SACN_RGBW) {
-    //call.set_color_mode(light::ColorMode::RGB_WHITE);
     call.set_red_if_supported(red);
     call.set_green_if_supported(green);
     call.set_blue_if_supported(blue);
@@ -179,15 +178,12 @@ uint16_t SACNLightEffect::process_(const uint8_t *payload, uint16_t size, uint16
       call.set_color_brightness(0.0f);
     }
 
-
   } else if (this->channel_type_ == SACN_RGB) {
-    // For RGB modes, use standard RGB mode
-    call.set_color_mode(light::ColorMode::RGB);
     call.set_red_if_supported(red);
     call.set_green_if_supported(green);
     call.set_blue_if_supported(blue);
-    call.set_color_brightness_if_supported(std::max(red, std::max(green, blue)));
-
+    float max_rgb = std::max({red, green, blue});
+    call.set_color_brightness(max_rgb); // Set color brightness based on RGB values
 
   } else if (this->channel_type_ == SACN_MONO) {
     // For MONO modes, use standard BRIGHTNESS mode
@@ -195,9 +191,10 @@ uint16_t SACNLightEffect::process_(const uint8_t *payload, uint16_t size, uint16
     call.set_red_if_supported(1.0f); // Set all supported channels to 1.0 to show white mono light
     call.set_green_if_supported(1.0f);
     call.set_blue_if_supported(1.0f);
+    call.set_white_if_supported(1.0f);
     call.set_cold_white_if_supported(1.0f);
     call.set_warm_white_if_supported(1.0f);
-    call.set_brightness_if_supported(mono);  // Use mono value for brightness
+    call.set_brightness(mono);  // Use mono value for brightness
   }
 
 
