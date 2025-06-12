@@ -140,7 +140,6 @@ uint16_t SACNLightEffect::process_(const uint8_t *payload, uint16_t size, uint16
   auto call = this->state_->turn_on();
 
   if (this->channel_type_ == SACN_RGBWW) {
-    //call.set_color_mode(light::ColorMode::RGB_COLD_WARM_WHITE);
     call.set_red_if_supported(red);
     call.set_green_if_supported(green);
     call.set_blue_if_supported(blue);
@@ -189,8 +188,6 @@ uint16_t SACNLightEffect::process_(const uint8_t *payload, uint16_t size, uint16
     call.set_color_brightness_if_supported(max_rgb); // Set color brightness based on RGB values
 
   } else if (this->channel_type_ == SACN_MONO) {
-    // For MONO modes, use standard BRIGHTNESS mode
-    call.set_color_mode(light::ColorMode::BRIGHTNESS);
     call.set_red_if_supported(1.0f); // Set all supported channels to 1.0 to show white mono light
     call.set_green_if_supported(1.0f);
     call.set_blue_if_supported(1.0f);
