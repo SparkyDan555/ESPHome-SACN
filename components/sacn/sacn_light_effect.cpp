@@ -27,11 +27,10 @@ void SACNLightEffect::start() {
   {
     auto call = this->state_->make_call();
     call.set_state(true);  // Show as on in HA
-    call.set_color_mode(light::ColorMode::RGB);
-    call.set_red(1.0f);
-    call.set_green(1.0f);
-    call.set_blue(1.0f);
-    call.set_brightness(1.0f);
+    call.set_red_if_supported(1.0f);
+    call.set_green_if_supported(1.0f);
+    call.set_blue_if_supported(1.0f);
+    call.set_brightness_if_supported(1.0f);
     call.set_transition_length(0);
     call.set_publish(true);  // Publish initial state to HA
     call.set_save(false);
@@ -74,12 +73,11 @@ void SACNLightEffect::apply() {
       // Blank the light output
       auto call = this->state_->make_call();
       call.set_state(true);  // Keep light "on" but...
-      call.set_color_mode(light::ColorMode::RGB);
-      call.set_red(0.0f);    // Set all channels
-      call.set_green(0.0f);  // to zero for
-      call.set_blue(0.0f);   // blank output
-      call.set_white(0.0f);
-      call.set_brightness(0.0f);
+      call.set_red_if_supported(0.0f);    // Set all channels
+      call.set_green_if_supported(0.0f);  // to zero for
+      call.set_blue_if_supported(0.0f);   // blank output
+      call.set_white_if_supported(0.0f);
+      call.set_brightness_if_supported(0.0f);
       call.set_transition_length(0);
       call.set_publish(false);  // Don't publish this state to HA
       call.set_save(false);
@@ -95,12 +93,11 @@ void SACNLightEffect::apply() {
     // Blank the light output
     auto call = this->state_->make_call();
     call.set_state(true);  // Keep light "on" but...
-    call.set_color_mode(light::ColorMode::RGB);
-    call.set_red(0.0f);    // Set all channels
-    call.set_green(0.0f);  // to zero for
-    call.set_blue(0.0f);   // blank output
-    call.set_white(0.0f);
-    call.set_brightness(0.0f);
+    call.set_red_if_supported(0.0f);    // Set all channels
+    call.set_green_if_supported(0.0f);  // to zero for
+    call.set_blue_if_supported(0.0f);   // blank output
+    call.set_white_if_supported(0.0f);
+    call.set_brightness_if_supported(0.0f);
     call.set_transition_length(0);
     call.set_publish(false);  // Don't publish this state to HA
     call.set_save(false);
