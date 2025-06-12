@@ -140,25 +140,18 @@ uint16_t SACNLightEffect::process_(const uint8_t *payload, uint16_t size, uint16
   auto call = this->state_->turn_on();
 
   if (this->channel_type_ == SACN_RGBWW) {
-    call.set_color_mode_if_supported(light::ColorMode::RGB_COLD_WARM_WHITE);
+    call.set_color_mode(light::ColorMode::RGB_COLD_WARM_WHITE);
     call.set_red_if_supported(red);
     call.set_green_if_supported(green);
     call.set_blue_if_supported(blue);
     call.set_cold_white_if_supported(cold_white);
     call.set_warm_white_if_supported(warm_white);
-    float max_rgb = std::max({red, green, blue});
     float max_brightness = std::max({red, green, blue, cold_white, warm_white});
-    call.set_brightness_if_supported(max_brightness);
-    // Set color_brightness: if any RGB is on, use max_rgb, else 0 (so white can shine alone)
-    if (max_rgb > 0.0f) {
-      call.set_color_brightness_if_supported(max_rgb);
-    } else {
-      call.set_color_brightness_if_supported(0.0f);
-    }
+    call.set_brightness(max_brightness);
 
 
   } else if (this->channel_type_ == SACN_RGBW) {
-    call.set_color_mode_if_supported(light::ColorMode::RGB_COLD_WARM_WHITE);
+    call.set_color_mode(light::ColorMode::RGB_COLD_WARM_WHITE);
     call.set_red_if_supported(red);
     call.set_green_if_supported(green);
     call.set_blue_if_supported(blue);
@@ -177,7 +170,7 @@ uint16_t SACNLightEffect::process_(const uint8_t *payload, uint16_t size, uint16
 
   } else if (this->channel_type_ == SACN_RGB) {
     // For RGB modes, use standard RGB mode
-    call.set_color_mode_if_supported(light::ColorMode::RGB);
+    call.set_color_mode(light::ColorMode::RGB);
     call.set_red_if_supported(red);
     call.set_green_if_supported(green);
     call.set_blue_if_supported(blue);
@@ -186,14 +179,10 @@ uint16_t SACNLightEffect::process_(const uint8_t *payload, uint16_t size, uint16
 
   } else if (this->channel_type_ == SACN_MONO) {
     // For MONO modes, use standard BRIGHTNESS mode
-    call.set_color_mode_if_supported(light::ColorMode::BRIGHTNESS);
+    call.set_color_mode(light::ColorMode::BRIGHTNESS);
     call.set_brightness_if_supported(mono);  // Use mono value for brightness
   }
 
-  // Log the current color mode in a compatible way (as integer value)
-  ESP_LOGI(TAG, "'%s' current color mode: %d.",
-           this->state_->get_name().c_str(),
-           static_cast<int>(this->state_->current_values.get_color_mode()));
 
   // Configure the light call to be as direct as possible
   call.set_transition_length(0);
