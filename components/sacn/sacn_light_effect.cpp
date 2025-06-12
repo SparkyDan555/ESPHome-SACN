@@ -119,6 +119,7 @@ uint16_t SACNLightEffect::process_(const uint8_t *payload, uint16_t size, uint16
   this->last_sacn_time_ms_ = millis();
 
   // Get raw DMX values
+  uint8_t raw_mono = payload[used];
   uint8_t raw_red = payload[used];
   uint8_t raw_green = this->channel_type_ >= SACN_RGB ? payload[used + 1] : 0;
   uint8_t raw_blue = this->channel_type_ >= SACN_RGB ? payload[used + 2] : 0;
@@ -127,6 +128,7 @@ uint16_t SACNLightEffect::process_(const uint8_t *payload, uint16_t size, uint16
   uint8_t raw_warm_white = this->channel_type_ == SACN_RGBWW ? payload[used + 4] : 0;
 
   // Convert DMX values to float (0.0-1.0)
+  float mono = (float)raw_mono / 255.0f;
   float red = (float)raw_red / 255.0f;
   float green = (float)raw_green / 255.0f;
   float blue = (float)raw_blue / 255.0f;
@@ -153,29 +155,39 @@ uint16_t SACNLightEffect::process_(const uint8_t *payload, uint16_t size, uint16
     } else {
       call.set_color_brightness_if_supported(0.0f);
     }
+
+
   } else if (this->channel_type_ == SACN_RGBW) {
-    call.set_color_mode(light::ColorMode::RGB_COLD_WARM_WHITE);
-    call.set_red(red);
-    call.set_green(green);
-    call.set_blue(blue);
+    call.set_color_mode_if_supported(light::ColorMode::RGB_COLD_WARM_WHITE);
+    call.set_red_if_supported(red);
+    call.set_green_if_supported(green);
+    call.set_blue_if_supported(blue);
     if (raw_white > 0) {
-      call.set_cold_white(white);
-      call.set_warm_white(white);
+      call.set_cold_white_if_supported(white);
+      call.set_warm_white_if_supported(white);
       ESP_LOGV(TAG, "Setting RGBWW values: R=%f, G=%f, B=%f, W=%f", red, green, blue, white);
     } else {
-      call.set_cold_white(0.0f);
-      call.set_warm_white(0.0f);
+      call.set_cold_white_if_supported(0.0f);
+      call.set_warm_white_if_supported(0.0f);
       ESP_LOGV(TAG, "Setting RGB values: R=%f, G=%f, B=%f (W=0)", red, green, blue);
     }
     float max_brightness = std::max(std::max(red, green), std::max(blue, raw_white > 0 ? white : 0.0f));
-    call.set_brightness(max_brightness);
-  } else {
-    // For RGB/MONO modes, use standard RGB mode
-    call.set_color_mode(light::ColorMode::RGB);
-    call.set_red(red);
-    call.set_green(green);
-    call.set_blue(blue);
-    call.set_brightness(std::max(red, std::max(green, blue)));
+    call.set_colour_brightness(max_brightness);
+
+
+  } else if (this->channel_type_ == SACN_RGB) {
+    // For RGB modes, use standard RGB mode
+    call.set_color_mode_if_supported(light::ColorMode::RGB);
+    call.set_red_if_supported(red);
+    call.set_green_if_supported(green);
+    call.set_blue_if_supported(blue);
+    call.set_colour_brightness_if_supported(std::max(red, std::max(green, blue)));
+
+
+  } else if (this->channel_type_ == SACN_MONO) {
+    // For MONO modes, use standard BRIGHTNESS mode
+    call.set_color_mode_if_supported(light::ColorMode::BRIGHTNESS);
+    call.set_brightness_if_supported(mono);  // Use mono value for brightness
   }
 
   // Configure the light call to be as direct as possible
