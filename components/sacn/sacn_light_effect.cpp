@@ -155,20 +155,18 @@ uint16_t SACNLightEffect::process_(const uint8_t *payload, uint16_t size, uint16
       call.set_color_brightness(0.0f);
     }
 
-    
+
   } else if (this->channel_type_ == SACN_RGBW) {
-    call.set_color_mode(light::ColorMode::RGB_COLD_WARM_WHITE);
+    call.set_color_mode(light::ColorMode::RGB_WHITE);
     call.set_red_if_supported(red);
     call.set_green_if_supported(green);
     call.set_blue_if_supported(blue);
-    if (raw_white > 0) {
+    if (white > 0) {
       call.set_cold_white_if_supported(white);
       call.set_warm_white_if_supported(white);
-      ESP_LOGV(TAG, "Setting RGBWW values: R=%f, G=%f, B=%f, W=%f", red, green, blue, white);
     } else {
       call.set_cold_white_if_supported(0.0f);
       call.set_warm_white_if_supported(0.0f);
-      ESP_LOGV(TAG, "Setting RGB values: R=%f, G=%f, B=%f (W=0)", red, green, blue);
     }
     float max_brightness = std::max(std::max(red, green), std::max(blue, raw_white > 0 ? white : 0.0f));
     call.set_color_brightness_if_supported(max_brightness);
