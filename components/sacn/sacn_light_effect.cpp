@@ -184,7 +184,7 @@ uint16_t SACNLightEffect::process_(const uint8_t *payload, uint16_t size, uint16
     call.set_green_if_supported(1.0f);
     call.set_blue_if_supported(1.0f);
     call.set_cold_white_if_supported(1.0f);
-    call.set_warm_white_if_supported(1.0f)
+    call.set_warm_white_if_supported(1.0f);
     call.set_brightness_if_supported(mono);  // Use mono value for brightness
   }
 
