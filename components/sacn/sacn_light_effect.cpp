@@ -190,8 +190,10 @@ uint16_t SACNLightEffect::process_(const uint8_t *payload, uint16_t size, uint16
     call.set_brightness_if_supported(mono);  // Use mono value for brightness
   }
 
-  ESP_LOGI(TAG, "'%s' current color mode %s.",
-             this->parent_->get_name().c_str(), LOG_STR_ARG(LightCall::color_mode_to_human(current_mode)));
+  // Log the current color mode in a compatible way
+  ESP_LOGI(TAG, "'%s' current color mode: %s.",
+           this->state_->get_name().c_str(),
+           esphome::light::color_mode_to_string(this->state_->current_values.get_color_mode()));
 
   // Configure the light call to be as direct as possible
   call.set_transition_length(0);
