@@ -172,7 +172,7 @@ uint16_t SACNLightEffect::process_(const uint8_t *payload, uint16_t size, uint16
       ESP_LOGV(TAG, "Setting RGB values: R=%f, G=%f, B=%f (W=0)", red, green, blue);
     }
     float max_brightness = std::max(std::max(red, green), std::max(blue, raw_white > 0 ? white : 0.0f));
-    call.set_colour_brightness(max_brightness);
+    call.set_color_brightness_if_supported(max_brightness);
 
 
   } else if (this->channel_type_ == SACN_RGB) {
@@ -181,7 +181,7 @@ uint16_t SACNLightEffect::process_(const uint8_t *payload, uint16_t size, uint16
     call.set_red_if_supported(red);
     call.set_green_if_supported(green);
     call.set_blue_if_supported(blue);
-    call.set_colour_brightness_if_supported(std::max(red, std::max(green, blue)));
+    call.set_color_brightness_if_supported(std::max(red, std::max(green, blue)));
 
 
   } else if (this->channel_type_ == SACN_MONO) {
