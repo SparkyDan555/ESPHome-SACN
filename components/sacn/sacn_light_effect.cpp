@@ -157,19 +157,27 @@ uint16_t SACNLightEffect::process_(const uint8_t *payload, uint16_t size, uint16
 
 
   } else if (this->channel_type_ == SACN_RGBW) {
-    call.set_color_mode(light::ColorMode::RGB_WHITE);
+    //call.set_color_mode(light::ColorMode::RGB_WHITE);
     call.set_red_if_supported(red);
     call.set_green_if_supported(green);
     call.set_blue_if_supported(blue);
     if (white > 0) {
-      call.set_cold_white_if_supported(white);
+      call.set_white_if_supported(white); // For RGBW lights
+      call.set_cold_white_if_supported(white); // For RGBWW lights
       call.set_warm_white_if_supported(white);
     } else {
+      call.set_white_if_supported(white);
       call.set_cold_white_if_supported(0.0f);
       call.set_warm_white_if_supported(0.0f);
     }
-    float max_brightness = std::max(std::max(red, green), std::max(blue, raw_white > 0 ? white : 0.0f));
-    call.set_color_brightness_if_supported(max_brightness);
+    float max_brightness = std::max({red, green, blue, white});
+    call.set_brightness(max_brightness);
+    float max_rgb = std::max({red, green, blue});
+    if( max_rgb > 0.0f) { // Only set color brightness if there is any RGB value
+      call.set_color_brightness(max_rgb);
+    } else {
+      call.set_color_brightness(0.0f);
+    }
 
 
   } else if (this->channel_type_ == SACN_RGB) {
