@@ -244,8 +244,15 @@ bool SACNComponent::process_(const uint8_t *payload, uint16_t size) {
   }
 
   // Validate we have enough data
-  if (size < DMX_START_OFFSET + 3) {
-    ESP_LOGW(TAG, "Packet too small for DMX data: %d (need at least %d)", size, DMX_START_OFFSET + 3);
+  // Only require 1 channel for mono, 3 for RGB, etc.
+  uint16_t min_channels = 1;
+  for (auto *light_effect : this->light_effects_) {
+    if (light_effect->channel_type_ > min_channels) {
+      min_channels = light_effect->channel_type_;
+    }
+  }
+  if (size < DMX_START_OFFSET + min_channels) {
+    ESP_LOGW(TAG, "Packet too small for DMX data: %d (need at least %d)", size, DMX_START_OFFSET + min_channels);
     return false;
   }
 
@@ -299,4 +306,4 @@ bool SACNComponent::process_(const uint8_t *payload, uint16_t size) {
 }  // namespace sacn
 }  // namespace esphome
 
-#endif  // USE_ARDUINO 
+#endif  // USE_ARDUINO
