@@ -4,6 +4,7 @@ from esphome.components.light.types import AddressableLightEffect, LightEffect
 from esphome.components.light.effects import (
     register_addressable_effect,
     register_rgb_effect,
+    register_monochromatic_effect,
 )
 from esphome.const import CONF_ID, CONF_NAME
 
@@ -63,6 +64,20 @@ async def to_code(config):
         cv.Optional(CONF_SACN_UNIVERSE, default=1): cv.int_range(min=1, max=63999),
         cv.Optional(CONF_SACN_START_CHANNEL, default=1): cv.int_range(min=1, max=512),
         cv.Optional(CONF_SACN_CHANNEL_TYPE, default=CHANNEL_RGB): cv.one_of(CHANNEL_MONO, CHANNEL_RGB, CHANNEL_RGBW, CHANNEL_RGBWW, upper=True),
+        cv.Optional(CONF_SACN_TRANSPORT_MODE, default="UNICAST"): cv.one_of(*SACN_TRANSPORT_MODE, upper=True),
+        cv.Optional(CONF_SACN_TIMEOUT, default="2500ms"): cv.positive_time_period_milliseconds,
+        cv.Optional(CONF_SACN_BLANK_ON_START, default=True): cv.boolean,
+    },
+)
+@register_monochromatic_effect(
+    "sacn",
+    SACNLightEffect,
+    "sACN",
+    {
+        cv.GenerateID(CONF_SACN_ID): cv.use_id(SACNComponent),
+        cv.Optional(CONF_SACN_UNIVERSE, default=1): cv.int_range(min=1, max=63999),
+        cv.Optional(CONF_SACN_START_CHANNEL, default=1): cv.int_range(min=1, max=512),
+        cv.Optional(CONF_SACN_CHANNEL_TYPE, default=CHANNEL_MONO): cv.one_of(CHANNEL_MONO, upper=True),
         cv.Optional(CONF_SACN_TRANSPORT_MODE, default="UNICAST"): cv.one_of(*SACN_TRANSPORT_MODE, upper=True),
         cv.Optional(CONF_SACN_TIMEOUT, default="2500ms"): cv.positive_time_period_milliseconds,
         cv.Optional(CONF_SACN_BLANK_ON_START, default=True): cv.boolean,
