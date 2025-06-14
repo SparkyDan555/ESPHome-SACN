@@ -13,7 +13,7 @@ This component adds support for the sACN (E1.31) protocol to ESPHome, allowing a
 - Blank on start option (similar to WLED)
 - Clean state transitions between sACN and Home Assistant control
 - Efficient logging with verbose DMX value logging option
-- **Monochromatic (single-channel) lights are fully supported**
+- Monochromatic (single-channel) lights are fully supported
 
 ## Installation
 
@@ -59,8 +59,8 @@ sacn:
 ```yaml
 light:
   - platform: monochromatic
-    name: "Sofa Light"
-    id: sofa_light
+    name: "Mono Light"
+    id: mono_light
     output: output_1
     effects:
       - sacn:
