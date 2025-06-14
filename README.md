@@ -5,15 +5,15 @@ This component adds support for the sACN (E1.31) protocol to ESPHome, allowing a
 ## Features
 
 - Support for both addressable and non-addressable lights
-- Multiple channel types: MONO (1 channel), RGB (3 channels), RGBW (4 channels)
+- Multiple channel types: MONO (1 channel), RGB (3 channels), RGBW (4 channels), RGBWW (5 channels)
 - Configurable universe (1-63999)
 - Configurable start channel (1-512)
 - Unicast and multicast transport modes
 - Configurable timeout with fallback to Home Assistant state
-- Proper packet validation and error handling
 - Blank on start option (similar to WLED)
 - Clean state transitions between sACN and Home Assistant control
 - Efficient logging with verbose DMX value logging option
+- **Monochromatic (single-channel) lights are fully supported**
 
 ## Installation
 
@@ -54,7 +54,25 @@ sacn:
 
 ### Basic Configuration
 
-Here's a basic example for an RGB light:
+#### Monochromatic (Single-Channel) Light Example
+
+```yaml
+light:
+  - platform: monochromatic
+    name: "Sofa Light"
+    id: sofa_light
+    output: output_1
+    effects:
+      - sacn:
+          universe: 1
+          start_channel: 1
+          channel_type: MONO  # Use 1 DMX channel for brightness only
+          transport_mode: unicast
+          timeout: 2500ms
+          blank_on_start: true
+```
+
+#### RGB Light Example
 
 ```yaml
 light:
@@ -63,9 +81,47 @@ light:
     red: red_output
     green: green_output
     blue: blue_output
-    
     effects:
       - sacn:
+          universe: 1
+          start_channel: 1
+          channel_type: RGB
+          transport_mode: unicast
+          timeout: 2500ms
+          blank_on_start: true
+```
+
+#### RGBW Light Example
+
+```yaml
+light:
+  - platform: rgbw
+    name: "RGBW Light"
+    red: red_output
+    green: green_output
+    blue: blue_output
+    white: white_output
+    effects:
+      - sacn:
+          universe: 1
+          start_channel: 1
+          channel_type: RGBW
+          transport_mode: unicast
+          timeout: 2500ms
+          blank_on_start: true
+```
+
+#### Addressable LED Strip Example
+
+```yaml
+light:
+  - platform: neopixelbus
+    type: GRB
+    pin: GPIO2
+    num_leds: 60
+    name: "LED Strip"
+    effects:
+      - addressable_sacn:
           universe: 1
           start_channel: 1
           channel_type: RGB
@@ -84,6 +140,7 @@ light:
   - `MONO`: Single channel (intensity)
   - `RGB`: Three channels (red, green, blue)
   - `RGBW`: Four channels (red, green, blue, white)
+  - `RGBWW`: Five channels (red, green, blue, cold white, warm white)
   Default: `RGB`
 - **transport_mode** (*Optional*, string): The network transport mode. One of:
   - `unicast`: Direct unicast communication
@@ -91,6 +148,13 @@ light:
   Default: `unicast`
 - **timeout** (*Optional*, time): Time to wait without sACN data before reverting to Home Assistant control. Default: `2500ms`
 - **blank_on_start** (*Optional*, bool): Whether to blank the light when the effect starts. Default: `false`
+
+## Channel Types
+
+- `MONO`: Uses 1 DMX channel for brightness (monochromatic lights)
+- `RGB`: Uses 3 DMX channels for red, green, and blue
+- `RGBW`: Uses 4 DMX channels for red, green, blue, and white
+- `RGBWW`: Uses 5 DMX channels for red, green, blue, cold white, and warm white (if supported)
 
 ## State Behavior
 
@@ -112,86 +176,17 @@ The component implements the following state behavior:
    - Clean return to Home Assistant control
    - No recursive state updates
 
-## Example Configurations
+## Example DMX Channel Mapping
 
-### RGB Light
+- **MONO**: Channel 1 → Brightness
+- **RGB**: Channel 1 → Red, Channel 2 → Green, Channel 3 → Blue
+- **RGBW**: Channel 1 → Red, Channel 2 → Green, Channel 3 → Blue, Channel 4 → White
+- **RGBWW**: Channel 1 → Red, Channel 2 → Green, Channel 3 → Blue, Channel 4 → Cold White, Channel 5 → Warm White
 
-```yaml
-output:
-  - platform: ledc
-    pin: GPIO4
-    id: red_output
-    frequency: 1000Hz
-    
-  - platform: ledc
-    pin: GPIO12
-    id: green_output
-    frequency: 1000Hz
-    
-  - platform: ledc
-    pin: GPIO14
-    id: blue_output
-    frequency: 1000Hz
-
-light:
-  - platform: rgb
-    name: "RGB Light"
-    id: main_light
-    
-    red: red_output
-    green: green_output
-    blue: blue_output
-    
-    effects:
-      - sacn:
-          universe: 1
-          start_channel: 1
-          channel_type: RGB
-          transport_mode: unicast
-          timeout: 2500ms
-          blank_on_start: true
-```
-
-### Addressable LED Strip
-
-```yaml
-light:
-  - platform: neopixelbus
-    type: GRB
-    pin: GPIO2
-    num_leds: 60
-    name: "LED Strip"
-    
-    effects:
-      - addressable_sacn:
-          universe: 1
-          start_channel: 1
-          channel_type: RGB
-          transport_mode: unicast
-          timeout: 2500ms
-          blank_on_start: true
-```
-
-### RGBW Light
-
-```yaml
-light:
-  - platform: rgbw
-    name: "RGBW Light"
-    red: red_output
-    green: green_output
-    blue: blue_output
-    white: white_output
-    
-    effects:
-      - sacn:
-          universe: 1
-          start_channel: 1
-          channel_type: RGBW
-          transport_mode: unicast
-          timeout: 2500ms
-          blank_on_start: true
-```
+## Notes
+- For monochromatic lights, only a single DMX channel is required and supported.
+- The effect will blank the light on start if `blank_on_start: true` is set.
+- Timeout and fallback to Home Assistant state are supported.
 
 ## Compatibility
 
@@ -223,4 +218,4 @@ Contributions are welcome! Please feel free to submit a Pull Request. For major 
 
 ## License
 
-This component is licensed under the MIT License. See the [LICENSE](LICENSE) file for details. 
+This component is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
