@@ -212,6 +212,16 @@ logger:
    - Light not blanking: Verify `blank_on_start` is set to true
    - Multiple timeout messages: Update to latest version
 
+## Known Limitations
+
+### Color Interlock Incompatibility
+
+This component is not compatible with the `color_interlock: true` option in light configurations. The color interlock feature enforces mutually exclusive RGB and COLD_WARM_WHITE color modes, where:
+- When RGB mode is active, white LEDs are turned off
+- When COLD_WARM_WHITE mode is active, RGB LEDs are turned off
+
+Since the sACN component uses direct channel-to-LED mapping and needs to control all channels independently, it cannot work with this restriction. If you need sACN control, ensure `color_interlock` is set to `false` in your light configuration.
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
