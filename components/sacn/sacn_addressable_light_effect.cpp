@@ -14,6 +14,7 @@ SACNAddressableLightEffect::SACNAddressableLightEffect(const std::string &name) 
 const std::string &SACNAddressableLightEffect::get_name() { return AddressableLightEffect::get_name(); }
 
 void SACNAddressableLightEffect::start() {
+  ESP_LOGD(TAG, "Starting Addressable sACN effect for '%s'", this->state_->get_name().c_str());
   auto *it = this->get_addressable_();
   this->last_colors_.resize(it->size(), Color::BLACK);
   this->data_received_ = false;
