@@ -20,12 +20,16 @@ class SACNAddressableLightEffect : public SACNLightEffectBase, public light::Add
 
   void apply(light::AddressableLight &it, const Color &current_color) override;
 
+  void set_blank_on_start(bool blank) { this->blank_on_start_ = blank; }
+
  protected:
   uint16_t process_(const uint8_t *payload, uint16_t size, uint16_t used) override;
 
   // Store the last received values for each LED
   std::vector<Color> last_colors_;
   bool data_received_{false};
+  bool blank_on_start_{false};
+  bool initial_blank_done_{false};
 };
 
 }  // namespace sacn

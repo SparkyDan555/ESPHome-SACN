@@ -94,6 +94,7 @@ async def to_code(config):
         cv.Optional(CONF_SACN_CHANNEL_TYPE, default="RGB"): cv.one_of(CHANNEL_MONO, CHANNEL_RGB, CHANNEL_RGBW, CHANNEL_RGBWW, upper=True),
         cv.Optional(CONF_SACN_TRANSPORT_MODE, default="UNICAST"): cv.one_of(*SACN_TRANSPORT_MODE, upper=True),
         cv.Optional(CONF_SACN_TIMEOUT, default="2500ms"): cv.positive_time_period_milliseconds,
+        cv.Optional(CONF_SACN_BLANK_ON_START, default=True): cv.boolean,
     },
 )
 async def sacn_light_effect_to_code(config, effect_id):

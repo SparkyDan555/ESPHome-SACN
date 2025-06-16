@@ -17,7 +17,17 @@ void SACNAddressableLightEffect::start() {
   auto *it = this->get_addressable_();
   this->last_colors_.resize(it->size(), Color::BLACK);
   this->data_received_ = false;
-  
+
+  // Blank the LEDs on start if requested and not already done
+  if (this->blank_on_start_ && !this->initial_blank_done_) {
+    for (size_t i = 0; i < it->size(); i++) {
+      auto output = (*it)[i];
+      output.set(Color::BLACK);
+    }
+    it->schedule_show();
+    this->initial_blank_done_ = true;
+  }
+
   // Set initial state in Home Assistant - show as white at full brightness
   auto call = this->state_->make_call();
   call.set_color_mode_if_supported(light::ColorMode::RGB);
@@ -28,10 +38,10 @@ void SACNAddressableLightEffect::start() {
   call.set_publish(true);  // Publish initial state
   call.set_save(false);
   call.perform();
-  
+
   AddressableLightEffect::start();
   SACNLightEffectBase::start();
-  
+
   // Not automatically active until data is received
   it->set_effect_active(false);
 }
@@ -39,7 +49,7 @@ void SACNAddressableLightEffect::start() {
 void SACNAddressableLightEffect::stop() {
   this->last_colors_.clear();
   this->data_received_ = false;
-  
+
   SACNLightEffectBase::stop();
   AddressableLightEffect::stop();
 }
@@ -48,7 +58,7 @@ void SACNAddressableLightEffect::apply(light::AddressableLight &it, const Color 
   // If receiving sACN packets times out, reset to Home Assistant color
   if (this->timeout_check()) {
     ESP_LOGD(TAG, "sACN stream for '%s->%s' timed out.", this->state_->get_name().c_str(), this->get_name().c_str());
-    
+
     auto call = this->state_->turn_on();
     call.set_color_mode_if_supported(this->state_->remote_values.get_color_mode());
     call.set_red_if_supported(this->state_->remote_values.get_red());
@@ -57,17 +67,17 @@ void SACNAddressableLightEffect::apply(light::AddressableLight &it, const Color 
     call.set_white_if_supported(this->state_->remote_values.get_white());
     call.set_brightness_if_supported(this->state_->remote_values.get_brightness());
     call.set_color_brightness_if_supported(this->state_->remote_values.get_color_brightness());
-    
+
     call.set_publish(true);  // Publish state change when effect ends
     call.set_save(false);
-    
+
     // Effect no longer active
     it.set_effect_active(false);
     this->data_received_ = false;
-    
+
     call.perform();
   }
-  
+
   // If we have received data, apply the last known colors
   if (this->data_received_) {
     for (size_t i = 0; i < it.size() && i < this->last_colors_.size(); i++) {
@@ -80,7 +90,7 @@ void SACNAddressableLightEffect::apply(light::AddressableLight &it, const Color 
 
 uint16_t SACNAddressableLightEffect::process_(const uint8_t *payload, uint16_t size, uint16_t used) {
   auto *it = this->get_addressable_();
-  
+
   // Calculate number of pixels we can update based on available data and channel type
   uint16_t channels_per_pixel;
   switch (this->channel_type_) {
@@ -99,19 +109,19 @@ uint16_t SACNAddressableLightEffect::process_(const uint8_t *payload, uint16_t s
     default:
       return 0;
   }
-  
+
   uint16_t num_pixels = std::min((size_t)it->size(), (size_t)((size - used) / channels_per_pixel));
   if (num_pixels < 1) {
     return 0;
   }
-  
+
   ESP_LOGV(TAG, "Applying sACN data for '%s' (size: %d - used: %d - num_pixels: %d - channels_per_pixel: %d)",
            get_name().c_str(), size, used, num_pixels, channels_per_pixel);
-  
+
   this->last_sacn_time_ms_ = millis();
   this->data_received_ = true;
   it->set_effect_active(true);
-  
+
   // Process pixels based on channel type
   for (uint16_t i = 0; i < num_pixels; i++) {
     uint16_t data_offset = used + (i * channels_per_pixel);
@@ -161,7 +171,7 @@ uint16_t SACNAddressableLightEffect::process_(const uint8_t *payload, uint16_t s
       }
     }
   }
-  
+
   it->schedule_show();
   return num_pixels * channels_per_pixel;
 }
